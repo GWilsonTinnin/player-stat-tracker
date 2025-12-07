@@ -116,10 +116,16 @@ export class PlayerStatView extends ItemView {
       latestEntryDiv.style.color = "#555";
       latestEntryDiv.style.fontSize = "12px";
       latestEntryDiv.style.fontStyle = "italic";
+      latestEntryDiv.style.maxWidth = "200px";
+      latestEntryDiv.style.overflow = "hidden";
+      latestEntryDiv.style.textOverflow = "ellipsis";
+      latestEntryDiv.style.whiteSpace = "nowrap";
+      
       if (counter.log) {
-        const entries = counter.log.split(" - ");
+        // Split by "-" to get individual entries
+        const entries = counter.log.split("-").map(e => e.trim()).filter(e => e);
         if (entries.length > 0) {
-          const latestContent = entries[entries.length - 1].trim();
+          const latestContent = entries[entries.length - 1];
           latestEntryDiv.textContent = latestContent;
         } else {
           latestEntryDiv.textContent = "No log entries";
