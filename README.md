@@ -81,7 +81,7 @@ A powerful Obsidian plugin for tracking player statistics, counters, and game me
 - **± Manual button**: Enter a value to add or subtract from the counter
 
 ### Variable References
-Each counter automatically generates a variable reference that can be used in your notes and documents.
+Each counter automatically generates a variable reference that can be used in your notes and documents. Variables display as clickable links that open the counter panel when clicked.
 
 **How to Use:**
 1. When editing or creating a counter, you'll see a "Variable Reference" section
@@ -90,7 +90,7 @@ Each counter automatically generates a variable reference that can be used in yo
 4. Click on the variable reference to copy it to your clipboard
 
 **In Your Documents:**
-Simply write `{{counter_name}}` anywhere in your document, and the current counter value will appear:
+Simply write `{{counter_name}}` anywhere in your document, and the current counter value will appear as a clickable link:
 
 ```markdown
 ## Character Sheet
@@ -99,7 +99,18 @@ Mana: {{mana}}
 Experience: {{experience}}
 ```
 
-The values will display in **blue bold text** and update whenever the counter values change.
+**Features:**
+- Values display in **blue underlined text** (like internal links)
+- Hover over a value to see a light blue highlight
+- Click any value to open the Player Stat Counter panel
+- Values automatically update every second when counter changes
+- Works in both Reading and Live Preview modes
+
+**CSS Customization:**
+The plugin includes a CSS snippet for styling variable links. To customize:
+1. Go to **Settings** → **Appearance** → **CSS Snippets**
+2. Look for "player-stat-tracker" 
+3. Edit the snippet file to customize colors and styling
 
 ### Dataview Integration
 The plugin supports Dataview queries to access counter data.
