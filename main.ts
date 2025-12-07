@@ -73,6 +73,22 @@ export default class PlayerStatCounterPlugin extends Plugin {
       },
     });
 
+    // Add command to debug CSS variables
+    this.addCommand({
+      id: "debug-player-stat-css",
+      name: "Debug: Check Variable Links in DOM",
+      callback: () => {
+        const links = document.querySelectorAll(".player-stat-variable");
+        console.log(`Found ${links.length} variable links in the DOM`);
+        links.forEach((link, i) => {
+          const key = link.getAttribute("data-counter-key");
+          const value = link.textContent;
+          const computedStyle = window.getComputedStyle(link);
+          console.log(`Link ${i}: key="${key}", value="${value}", color="${computedStyle.color}", background="${computedStyle.backgroundColor}"`);
+        });
+      },
+    });
+
     // Add command to refresh variable replacements
     this.addCommand({
       id: "refresh-player-stat-variables",
