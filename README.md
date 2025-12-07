@@ -78,6 +78,45 @@ A powerful Obsidian plugin for tracking player statistics, counters, and game me
 - **➖ Minus button**: Decrease counter value (won't go below minimum)
 - **✎ Edit button**: Modify counter name and notes
 - **✕ Delete button**: Remove the counter
+- **± Manual button**: Enter a value to add or subtract from the counter
+
+### Variable References
+Each counter automatically generates a variable reference that can be used in your notes and documents.
+
+**How to Use:**
+1. When editing or creating a counter, you'll see a "Variable Reference" section
+2. The reference format is `{{counter_name}}` where the counter name is converted to lowercase with underscores
+3. Example: "My Health" → `{{my_health}}`
+4. Click on the variable reference to copy it to your clipboard
+
+**In Your Documents:**
+Simply write `{{counter_name}}` anywhere in your document, and the current counter value will appear:
+
+```markdown
+## Character Sheet
+Health: {{health}}
+Mana: {{mana}}
+Experience: {{experience}}
+```
+
+The values will display in **blue bold text** and update whenever the counter values change.
+
+### Dataview Integration
+The plugin supports Dataview queries to access counter data.
+
+**Available Query:**
+```dataview
+table key, value, log, type from "PlayerStatCounter"
+where value > 5
+sort value desc
+```
+
+**Query Fields:**
+- `key` - Counter identifier (e.g., "health")
+- `value` - Current counter value
+- `log` - Notes/log content
+- `type` - Counter type ("simple" or "plot")
+- `history` - Array of all changes with timestamps
 
 ### Settings
 Access plugin settings via: **Settings** → **Community Plugins** → **Player Stat Tracker**
