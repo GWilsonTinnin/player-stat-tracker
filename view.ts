@@ -106,7 +106,25 @@ export class PlayerStatView extends ItemView {
       valueDiv.style.color = "#000";
       valueDiv.style.fontSize = "28px";
       valueDiv.style.fontWeight = "bold";
+      valueDiv.style.marginBottom = "8px";
       valueDiv.textContent = String(counter.value);
+
+      // Display latest log entry
+      const latestEntryDiv = leftSection.createDiv();
+      latestEntryDiv.style.color = "#555";
+      latestEntryDiv.style.fontSize = "12px";
+      latestEntryDiv.style.fontStyle = "italic";
+      if (counter.log) {
+        const entries = counter.log.split(" - ");
+        if (entries.length > 0) {
+          const latestContent = entries[entries.length - 1].trim();
+          latestEntryDiv.textContent = latestContent;
+        } else {
+          latestEntryDiv.textContent = "No log entries";
+        }
+      } else {
+        latestEntryDiv.textContent = "No log entries";
+      }
 
       // Right side: Control buttons
       const rightSection = counterItem.createDiv();
