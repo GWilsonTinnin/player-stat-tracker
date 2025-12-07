@@ -119,10 +119,8 @@ export default class PlayerStatCounterPlugin extends Plugin {
     // Register markdown post processor for variable replacement
     this.registerMarkdownPostProcessor((el: HTMLElement, ctx: any) => {
       console.log("[PlayerStat] Post-processor called, element tagName:", el.tagName, "textContent preview:", el.textContent?.substring(0, 50));
-      // Schedule the update to happen after Obsidian finishes rendering
-      setTimeout(() => {
-        this.processMarkdownContainer(el);
-      }, 100);
+      // Process the element directly - this is called for each rendered block
+      this.processMarkdownElement(el);
     });
 
     // Periodically scan all markdown containers for variables
@@ -146,15 +144,16 @@ export default class PlayerStatCounterPlugin extends Plugin {
     
     containers.forEach((container, idx) => {
       console.log(`[PlayerStat] Scanning container ${idx}, HTML length: ${(container as HTMLElement).innerHTML?.length}`);
-      this.processMarkdownContainer(container as HTMLElement);
+      this.processMarkdownElement(container as HTMLElement);
     });
   }
 
-  private processMarkdownContainer(container: HTMLElement) {
-    console.log(`[PlayerStat] Processing container, HTML content:`, container.innerHTML);
+  private processMarkdownElement(element: HTMLElement) {
+    console.log(`[PlayerStat] Processing element, tagName: ${element.tagName}, text: "${element.textContent?.substring(0, 50)}"`);
+    
     // Find all text nodes and replace variables
     const walker = document.createTreeWalker(
-      container,
+      element,
       NodeFilter.SHOW_TEXT,
       null,
       false
@@ -170,7 +169,7 @@ export default class PlayerStatCounterPlugin extends Plugin {
         continue;
       }
       
-      if (node.textContent?.includes("{{")) {
+      if (node.textContent?.includes("<<")) {
         console.log(`[PlayerStat] Found variable text node: "${node.textContent}"`);
         nodesToProcess.push(node);
       }

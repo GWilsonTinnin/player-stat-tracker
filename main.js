@@ -789,9 +789,7 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
       this.registerMarkdownPostProcessor((el, ctx) => {
         var _a;
         console.log("[PlayerStat] Post-processor called, element tagName:", el.tagName, "textContent preview:", (_a = el.textContent) == null ? void 0 : _a.substring(0, 50));
-        setTimeout(() => {
-          this.processMarkdownContainer(el);
-        }, 100);
+        this.processMarkdownElement(el);
       });
       this.registerInterval(
         window.setInterval(() => {
@@ -813,14 +811,14 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
     containers.forEach((container, idx) => {
       var _a;
       console.log(`[PlayerStat] Scanning container ${idx}, HTML length: ${(_a = container.innerHTML) == null ? void 0 : _a.length}`);
-      this.processMarkdownContainer(container);
+      this.processMarkdownElement(container);
     });
   }
-  processMarkdownContainer(container) {
-    var _a;
-    console.log(`[PlayerStat] Processing container, HTML content:`, container.innerHTML);
+  processMarkdownElement(element) {
+    var _a, _b;
+    console.log(`[PlayerStat] Processing element, tagName: ${element.tagName}, text: "${(_a = element.textContent) == null ? void 0 : _a.substring(0, 50)}"`);
     const walker = document.createTreeWalker(
-      container,
+      element,
       NodeFilter.SHOW_TEXT,
       null,
       false
@@ -832,7 +830,7 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
       if (parent == null ? void 0 : parent.classList.contains("player-stat-variable")) {
         continue;
       }
-      if ((_a = node.textContent) == null ? void 0 : _a.includes("{{")) {
+      if ((_b = node.textContent) == null ? void 0 : _b.includes("<<")) {
         console.log(`[PlayerStat] Found variable text node: "${node.textContent}"`);
         nodesToProcess.push(node);
       }
