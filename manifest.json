@@ -1,0 +1,11 @@
+{
+  "id": "player-stat-tracker",
+  "name": "Player Stat Tracker",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "Track player statistics with an interactive counter",
+  "author": "Your Name",
+  "authorUrl": "https://yourwebsite.com",
+  "fundingUrl": "",
+  "isDesktopOnly": false
+}

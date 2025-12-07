@@ -1,0 +1,15 @@
+node_modules/
+.DS_Store
+*.log
+.vscode
+.idea
+dist/
+build/
+.env
+.env.local
+*.swp
+*.swo
+*~
+.tmp/
+.cache/
+.env.*.local
