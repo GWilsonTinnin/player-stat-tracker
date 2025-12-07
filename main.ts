@@ -94,6 +94,36 @@ export default class PlayerStatCounterPlugin extends Plugin {
         this.updateAllVariables();
       }, 1000) // Update every second
     );
+
+    // Add CSS styles for variables
+    this.addStyle();
+  }
+
+  private addStyle() {
+    const style = document.createElement("style");
+    style.textContent = `
+      a.player-stat-variable {
+        font-weight: bold;
+        color: #0066cc;
+        cursor: pointer;
+        text-decoration: none;
+        border-bottom: 1px solid #0066cc;
+        padding: 0 2px;
+        border-radius: 2px;
+        transition: all 0.15s ease;
+      }
+      
+      a.player-stat-variable:hover {
+        background-color: rgba(0, 102, 204, 0.15);
+        border-bottom-width: 2px;
+        padding-bottom: 1px;
+      }
+      
+      a.player-stat-variable:active {
+        background-color: rgba(0, 102, 204, 0.25);
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   private updateAllVariables() {
@@ -183,28 +213,10 @@ export default class PlayerStatCounterPlugin extends Plugin {
         link.style.cursor = "pointer";
         link.style.textDecoration = "none";
         link.style.borderBottom = "1px solid #0066cc";
-        link.style.transition = "all 0.2s ease";
+        link.style.transition = "background-color 0.2s ease";
+        link.style.padding = "0 2px";
+        link.style.borderRadius = "2px";
         link.textContent = String(counter.value);
-
-        // Add hover effect
-        link.addEventListener("mouseenter", () => {
-          link.style.backgroundColor = "rgba(0, 102, 204, 0.1)";
-          link.style.borderBottomWidth = "2px";
-        });
-
-        link.addEventListener("mouseleave", () => {
-          link.style.backgroundColor = "transparent";
-          link.style.borderBottomWidth = "1px";
-        });
-
-        // Add click handler to open the counter panel and focus on this counter
-        link.addEventListener("click", (e) => {
-          e.preventDefault();
-          // Open the player stat counter view
-          this.activateView();
-          // Optionally could scroll to or highlight the counter in the panel
-          console.log(`Clicked counter variable: ${counterKey}`);
-        });
 
         fragment.appendChild(link);
         hasReplacement = true;
@@ -224,7 +236,23 @@ export default class PlayerStatCounterPlugin extends Plugin {
       }
 
       parent.replaceChild(fragment, node);
+      
+      // Add event listeners to the newly created links
+      const links = fragment.querySelectorAll(".player-stat-variable");
+      links.forEach((link) => {
+        this.attachLinkListeners(link as HTMLElement);
+      });
     }
+  }
+
+  private attachLinkListeners(link: HTMLElement) {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      const counterKey = link.getAttribute("data-counter-key");
+      // Open the player stat counter view
+      this.activateView();
+      console.log(`Clicked counter variable: ${counterKey}`);
+    });
   }
 
   private registerDataviewSource() {
