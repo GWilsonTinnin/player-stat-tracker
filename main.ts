@@ -59,6 +59,16 @@ export default class PlayerStatCounterPlugin extends Plugin {
       callback: () => this.activateView(),
     });
 
+    // Add command to refresh variable replacements
+    this.addCommand({
+      id: "refresh-player-stat-variables",
+      name: "Refresh Player Stat Variables",
+      callback: () => {
+        // Force re-render of all markdown to update variables
+        this.app.workspace.updateOptions();
+      },
+    });
+
     // Register markdown post processor for variable replacement
     this.registerMarkdownPostProcessor((el: HTMLElement, ctx: any) => {
       this.replaceVariablesInElement(el);
@@ -81,7 +91,7 @@ export default class PlayerStatCounterPlugin extends Plugin {
 
     while ((node = walker.nextNode())) {
       if (node.textContent?.includes("{{")) {
-        nodesToReplace.push({ node, regex: /\{\{(\w+)\}\}/g });
+        nodesToReplace.push({ node, regex: /\{\{([\w]+)\}\}/g });
       }
     }
 
@@ -93,7 +103,8 @@ export default class PlayerStatCounterPlugin extends Plugin {
       const fragment = document.createDocumentFragment();
       let lastIndex = 0;
       let match;
-      const regex = /\{\{(\w+)\}\}/g;
+      // Updated regex to properly capture underscores and word characters
+      const regex = /\{\{([\w_]+)\}\}/g;
 
       while ((match = regex.exec(text)) !== null) {
         // Add text before match
@@ -115,6 +126,7 @@ export default class PlayerStatCounterPlugin extends Plugin {
           span.textContent = String(counter.value);
           fragment.appendChild(span);
         } else {
+          // Variable not found - keep original text
           fragment.appendChild(document.createTextNode(match[0]));
         }
 
@@ -176,9 +188,23 @@ export default class PlayerStatCounterPlugin extends Plugin {
 
   async saveCounters() {
     await this.saveData({ counters: this.counters, settings: this.settings });
+    // Trigger re-render to update variables in documents
+    this.refreshMarkdownVariables();
   }
 
   async saveSettings() {
     await this.saveData({ counters: this.counters, settings: this.settings });
+  }
+
+  private refreshMarkdownVariables() {
+    // Force markdown re-processing to update variable replacements
+    const leaves = this.app.workspace.getLeavesOfType("markdown");
+    leaves.forEach((leaf) => {
+      const view = leaf.view;
+      if (view && view.containerEl) {
+        // Trigger a re-render by updating the view
+        (view as any).previewMode?.rerender(true);
+      }
+    });
   }
 }
