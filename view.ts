@@ -155,6 +155,12 @@ export class PlayerStatView extends ItemView {
       editBtn.addEventListener("click", async () => {
         this.showEditCounterDialog(counter);
       });
+
+      const manualBtn = rightSection.createEl("button", { text: "±" });
+      this.styleSmallButton(manualBtn, "#6f42c1");
+      manualBtn.addEventListener("click", async () => {
+        this.showManualEntryDialog(counter);
+      });
     });
   }
 
@@ -408,6 +414,124 @@ export class PlayerStatView extends ItemView {
     document.body.appendChild(overlay);
     document.body.appendChild(modal);
     nameInput.focus();
+  }
+
+  private showManualEntryDialog(counter: PlayerCounter) {
+    const modal = document.createElement("div");
+    modal.style.position = "fixed";
+    modal.style.top = "50%";
+    modal.style.left = "50%";
+    modal.style.transform = "translate(-50%, -50%)";
+    modal.style.backgroundColor = "var(--background-primary)";
+    modal.style.border = "1px solid var(--divider-color)";
+    modal.style.borderRadius = "8px";
+    modal.style.padding = "20px";
+    modal.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
+    modal.style.zIndex = "1000";
+    modal.style.minWidth = "300px";
+
+    const title = modal.createEl("h3", { text: `Adjust ${counter.key.charAt(0).toUpperCase() + counter.key.slice(1).replace(/-/g, " ")}` });
+    title.style.marginTop = "0";
+
+    const form = modal.createDiv("form");
+
+    const label = form.createEl("label", { text: "Enter value to add or subtract:" });
+    label.style.display = "block";
+    label.style.marginBottom = "10px";
+    label.style.fontWeight = "bold";
+
+    const input = form.createEl("input", {
+      type: "number",
+      placeholder: "e.g., 5 or -3"
+    }) as HTMLInputElement;
+    input.style.width = "100%";
+    input.style.padding = "10px";
+    input.style.marginBottom = "15px";
+    input.style.border = "1px solid var(--divider-color)";
+    input.style.borderRadius = "4px";
+    input.style.boxSizing = "border-box";
+    input.style.fontSize = "16px";
+
+    const currentValueDiv = form.createDiv();
+    currentValueDiv.style.marginBottom = "15px";
+    currentValueDiv.style.padding = "10px";
+    currentValueDiv.style.backgroundColor = "var(--background-secondary)";
+    currentValueDiv.style.borderRadius = "4px";
+    currentValueDiv.textContent = `Current value: ${counter.value}`;
+
+    const previewDiv = form.createDiv();
+    previewDiv.style.marginBottom = "15px";
+    previewDiv.style.padding = "10px";
+    previewDiv.style.backgroundColor = "var(--background-secondary)";
+    previewDiv.style.borderRadius = "4px";
+    previewDiv.textContent = `New value will be: ${counter.value}`;
+
+    input.addEventListener("input", () => {
+      const num = parseInt(input.value) || 0;
+      const newValue = counter.value + num;
+      previewDiv.textContent = `New value will be: ${newValue}`;
+    });
+
+    const buttonContainer = form.createDiv();
+    buttonContainer.style.display = "flex";
+    buttonContainer.style.gap = "10px";
+    buttonContainer.style.justifyContent = "flex-end";
+
+    const confirmBtn = buttonContainer.createEl("button", { text: "Apply" });
+    confirmBtn.style.padding = "8px 16px";
+    confirmBtn.style.backgroundColor = "#28a745";
+    confirmBtn.style.color = "white";
+    confirmBtn.style.border = "none";
+    confirmBtn.style.borderRadius = "4px";
+    confirmBtn.style.cursor = "pointer";
+
+    const cancelBtn = buttonContainer.createEl("button", { text: "Cancel" });
+    cancelBtn.style.padding = "8px 16px";
+    cancelBtn.style.backgroundColor = "#6c757d";
+    cancelBtn.style.color = "white";
+    cancelBtn.style.border = "none";
+    cancelBtn.style.borderRadius = "4px";
+    cancelBtn.style.cursor = "pointer";
+
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100%";
+    overlay.style.height = "100%";
+    overlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+    overlay.style.zIndex = "999";
+
+    confirmBtn.addEventListener("click", async () => {
+      const num = parseInt(input.value) || 0;
+      const maxVal = this.plugin.settings.maxValue || Infinity;
+      const newValue = Math.min(maxVal, Math.max(this.plugin.settings.minValue, counter.value + num));
+      counter.value = newValue;
+      counter.history.push({
+        timestamp: new Date().toISOString(),
+        value: counter.value
+      });
+      await this.plugin.saveCounters();
+      overlay.remove();
+      modal.remove();
+      this.renderCounters();
+    });
+
+    cancelBtn.addEventListener("click", () => {
+      overlay.remove();
+      modal.remove();
+    });
+
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) {
+        overlay.remove();
+        modal.remove();
+      }
+    });
+
+    document.body.appendChild(overlay);
+    document.body.appendChild(modal);
+    input.focus();
   }
 
   async onClose() {
