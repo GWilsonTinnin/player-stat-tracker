@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, MarkdownPostProcessor } from "obsidian";
+import { Plugin, WorkspaceLeaf, MarkdownPostProcessor, ItemView } from "obsidian";
 import { PlayerStatView, VIEW_TYPE_PLAYER_STAT } from "./view";
 import { PlayerStatSettingTab } from "./settings";
 import { PlayerCounter } from "./counter";
@@ -74,11 +74,43 @@ export default class PlayerStatCounterPlugin extends Plugin {
       this.replaceVariablesInElement(el);
     });
 
+    // Also monitor for DOM changes and update variables
+    const observer = new MutationObserver(() => {
+      const activeView = this.app.workspace.getActiveViewOfType(ItemView);
+      if (activeView && activeView.containerEl) {
+        this.replaceVariablesInElement(activeView.containerEl);
+      }
+    });
+
+    // Start observing after a short delay to ensure DOM is ready
+    setTimeout(() => {
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
+    }, 1000);
+
+    this.registerInterval(
+      window.setInterval(() => {
+        // Periodically refresh variables in active documents
+        const leaves = this.app.workspace.getLeavesOfType("markdown");
+        leaves.forEach((leaf) => {
+          const view = leaf.view;
+          if (view && view.containerEl) {
+            this.replaceVariablesInElement(view.containerEl);
+          }
+        });
+      }, 2000)
+    );
+
     // Register Dataview source if available
     this.registerDataviewSource();
   }
 
   private replaceVariablesInElement(el: HTMLElement) {
+    // Get all text nodes
+    const textNodes: Node[] = [];
     const walker = document.createTreeWalker(
       el,
       NodeFilter.SHOW_TEXT,
@@ -86,25 +118,23 @@ export default class PlayerStatCounterPlugin extends Plugin {
       false
     );
 
-    const nodesToReplace: Array<{ node: Node; regex: RegExp }> = [];
     let node: Node | null;
-
     while ((node = walker.nextNode())) {
       if (node.textContent?.includes("{{")) {
-        nodesToReplace.push({ node, regex: /\{\{([\w]+)\}\}/g });
+        textNodes.push(node);
       }
     }
 
-    for (const { node } of nodesToReplace) {
+    // Process each text node
+    textNodes.forEach((node) => {
       const text = node.textContent || "";
       const parent = node.parentNode;
-      if (!parent) continue;
+      if (!parent) return;
 
       const fragment = document.createDocumentFragment();
       let lastIndex = 0;
-      let match;
-      // Updated regex to properly capture underscores and word characters
       const regex = /\{\{([\w_]+)\}\}/g;
+      let match;
 
       while ((match = regex.exec(text)) !== null) {
         // Add text before match
@@ -118,11 +148,12 @@ export default class PlayerStatCounterPlugin extends Plugin {
         const counterKey = match[1];
         const counter = this.counters.find((c) => c.key === counterKey);
 
-        if (counter) {
+        if (counter !== undefined) {
           const span = document.createElement("span");
           span.className = "player-stat-variable";
           span.style.fontWeight = "bold";
           span.style.color = "#0066cc";
+          span.style.backgroundColor = "transparent";
           span.textContent = String(counter.value);
           fragment.appendChild(span);
         } else {
@@ -139,7 +170,7 @@ export default class PlayerStatCounterPlugin extends Plugin {
       }
 
       parent.replaceChild(fragment, node);
-    }
+    });
   }
 
   private registerDataviewSource() {
