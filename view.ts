@@ -285,7 +285,7 @@ export class PlayerStatView extends ItemView {
     // Function to generate variable reference
     const generateVarRef = (name: string): string => {
       const varName = name.toLowerCase().replace(/\s+/g, "_");
-      return `{{${varName}}}`;
+      return `<<${varName}>>`;
     };
 
     const updateVarDisplay = () => {
@@ -453,7 +453,7 @@ export class PlayerStatView extends ItemView {
     // Function to generate variable reference
     const generateVarRef = (name: string): string => {
       const varName = name.toLowerCase().replace(/\s+/g, "_");
-      return `{{${varName}}}`;
+      return `<<${varName}>>`;
     };
 
     const updateVarDisplay = () => {
