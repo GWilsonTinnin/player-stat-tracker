@@ -98,31 +98,19 @@ export default class PlayerStatCounterPlugin extends Plugin {
 
   private updateAllVariables() {
     // Find all elements with player-stat-variable class and update their values
-    const variableSpans = document.querySelectorAll(".player-stat-variable");
-    variableSpans.forEach((span: Element) => {
-      // Try to extract the variable name from nearby text or attribute
-      const parent = span.parentNode;
-      if (!parent) return;
+    const variableLinks = document.querySelectorAll(".player-stat-variable");
+    variableLinks.forEach((link: Element) => {
+      const counterKey = link.getAttribute("data-counter-key");
+      if (!counterKey) return;
 
-      const text = parent.textContent || "";
-      // Match pattern {{variable_name}}
-      const regex = /\{\{([\w_]+)\}\}/g;
-      let match;
-
-      // Find the variable that corresponds to this span
-      while ((match = regex.exec(text)) !== null) {
-        const counterKey = match[1];
-        const counter = this.counters.find((c) => c.key === counterKey);
-
-        if (counter && span.textContent !== String(counter.value)) {
-          // Update the span value
-          span.textContent = String(counter.value);
-          break;
-        }
+      const counter = this.counters.find((c) => c.key === counterKey);
+      if (counter && link.textContent !== String(counter.value)) {
+        // Update the link text content with new value
+        link.textContent = String(counter.value);
       }
     });
 
-    // Also do a full refresh of markdown containers
+    // Also do a full refresh of markdown containers to catch any missed variables
     const leaves = this.app.workspace.getLeavesOfType("markdown");
     leaves.forEach((leaf) => {
       const view = leaf.view;
@@ -185,14 +173,40 @@ export default class PlayerStatCounterPlugin extends Plugin {
       const counter = this.counters.find((c) => c.key === counterKey);
 
       if (counter !== undefined) {
-        const span = document.createElement("span");
-        span.className = "player-stat-variable";
-        span.setAttribute("data-counter-key", counterKey);
-        span.style.fontWeight = "bold";
-        span.style.color = "#0066cc";
-        span.style.backgroundColor = "transparent";
-        span.textContent = String(counter.value);
-        fragment.appendChild(span);
+        // Create a link-like element
+        const link = document.createElement("a");
+        link.className = "player-stat-variable internal-link";
+        link.setAttribute("data-counter-key", counterKey);
+        link.setAttribute("href", `#${counterKey}`);
+        link.style.fontWeight = "bold";
+        link.style.color = "#0066cc";
+        link.style.cursor = "pointer";
+        link.style.textDecoration = "none";
+        link.style.borderBottom = "1px solid #0066cc";
+        link.style.transition = "all 0.2s ease";
+        link.textContent = String(counter.value);
+
+        // Add hover effect
+        link.addEventListener("mouseenter", () => {
+          link.style.backgroundColor = "rgba(0, 102, 204, 0.1)";
+          link.style.borderBottomWidth = "2px";
+        });
+
+        link.addEventListener("mouseleave", () => {
+          link.style.backgroundColor = "transparent";
+          link.style.borderBottomWidth = "1px";
+        });
+
+        // Add click handler to open the counter panel and focus on this counter
+        link.addEventListener("click", (e) => {
+          e.preventDefault();
+          // Open the player stat counter view
+          this.activateView();
+          // Optionally could scroll to or highlight the counter in the panel
+          console.log(`Clicked counter variable: ${counterKey}`);
+        });
+
+        fragment.appendChild(link);
         hasReplacement = true;
       } else {
         // Variable not found - keep original text
