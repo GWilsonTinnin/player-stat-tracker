@@ -94,36 +94,6 @@ export default class PlayerStatCounterPlugin extends Plugin {
         this.updateAllVariables();
       }, 1000) // Update every second
     );
-
-    // Add CSS styles for variables
-    this.addStyle();
-  }
-
-  private addStyle() {
-    const style = document.createElement("style");
-    style.textContent = `
-      a.player-stat-variable {
-        font-weight: bold;
-        color: #0066cc;
-        cursor: pointer;
-        text-decoration: none;
-        border-bottom: 1px solid #0066cc;
-        padding: 0 2px;
-        border-radius: 2px;
-        transition: all 0.15s ease;
-      }
-      
-      a.player-stat-variable:hover {
-        background-color: rgba(0, 102, 204, 0.15);
-        border-bottom-width: 2px;
-        padding-bottom: 1px;
-      }
-      
-      a.player-stat-variable:active {
-        background-color: rgba(0, 102, 204, 0.25);
-      }
-    `;
-    document.head.appendChild(style);
   }
 
   private updateAllVariables() {
@@ -208,14 +178,6 @@ export default class PlayerStatCounterPlugin extends Plugin {
         link.className = "player-stat-variable internal-link";
         link.setAttribute("data-counter-key", counterKey);
         link.setAttribute("href", `#${counterKey}`);
-        link.style.fontWeight = "bold";
-        link.style.color = "#0066cc";
-        link.style.cursor = "pointer";
-        link.style.textDecoration = "none";
-        link.style.borderBottom = "1px solid #0066cc";
-        link.style.transition = "background-color 0.2s ease";
-        link.style.padding = "0 2px";
-        link.style.borderRadius = "2px";
         link.textContent = String(counter.value);
 
         fragment.appendChild(link);

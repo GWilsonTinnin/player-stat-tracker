@@ -1,43 +1,57 @@
 /* Player Stat Tracker - Variable Link Styling */
 
 /* Main variable link styling */
+.markdown-reading-view a.player-stat-variable,
+.markdown-preview-view a.player-stat-variable,
 a.player-stat-variable {
-  font-weight: bold;
-  color: #0066cc;
-  cursor: pointer;
-  text-decoration: none;
-  border-bottom: 1px solid #0066cc;
-  padding: 0 2px;
-  border-radius: 2px;
-  transition: all 0.15s ease;
-  display: inline-block;
+  font-weight: bold !important;
+  color: #0066cc !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  border-bottom: 1px solid #0066cc !important;
+  padding: 0 2px !important;
+  border-radius: 2px !important;
+  transition: all 0.15s ease !important;
+  display: inline-block !important;
+  background-color: transparent !important;
 }
 
 /* Hover state - light blue background */
+.markdown-reading-view a.player-stat-variable:hover,
+.markdown-preview-view a.player-stat-variable:hover,
 a.player-stat-variable:hover {
-  background-color: rgba(0, 102, 204, 0.15);
-  border-bottom-width: 2px;
-  padding-bottom: 1px;
-  box-shadow: 0 0 4px rgba(0, 102, 204, 0.2);
+  background-color: rgba(0, 102, 204, 0.2) !important;
+  border-bottom-width: 2px !important;
+  padding-bottom: 1px !important;
+  box-shadow: 0 0 6px rgba(0, 102, 204, 0.3) !important;
 }
 
 /* Active/click state - darker blue background */
+.markdown-reading-view a.player-stat-variable:active,
+.markdown-preview-view a.player-stat-variable:active,
 a.player-stat-variable:active {
-  background-color: rgba(0, 102, 204, 0.25);
-  border-bottom-width: 2px;
+  background-color: rgba(0, 102, 204, 0.3) !important;
+  border-bottom-width: 2px !important;
 }
 
 /* Dark mode support */
+body.theme-dark .markdown-reading-view a.player-stat-variable,
+body.theme-dark .markdown-preview-view a.player-stat-variable,
 body.theme-dark a.player-stat-variable {
-  color: #5c9cff;
-  border-bottom-color: #5c9cff;
+  color: #5c9cff !important;
+  border-bottom-color: #5c9cff !important;
 }
 
+body.theme-dark .markdown-reading-view a.player-stat-variable:hover,
+body.theme-dark .markdown-preview-view a.player-stat-variable:hover,
 body.theme-dark a.player-stat-variable:hover {
-  background-color: rgba(92, 156, 255, 0.15);
-  box-shadow: 0 0 4px rgba(92, 156, 255, 0.2);
+  background-color: rgba(92, 156, 255, 0.2) !important;
+  box-shadow: 0 0 6px rgba(92, 156, 255, 0.3) !important;
 }
 
+body.theme-dark .markdown-reading-view a.player-stat-variable:active,
+body.theme-dark .markdown-preview-view a.player-stat-variable:active,
 body.theme-dark a.player-stat-variable:active {
-  background-color: rgba(92, 156, 255, 0.25);
+  background-color: rgba(92, 156, 255, 0.3) !important;
 }
+
