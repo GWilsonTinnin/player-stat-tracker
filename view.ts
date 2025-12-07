@@ -84,9 +84,11 @@ export class PlayerStatView extends ItemView {
       counterItem.style.border = "none";
       counterItem.style.display = "flex";
       counterItem.style.justifyContent = "space-between";
-      counterItem.style.alignItems = "center";
+      counterItem.style.alignItems = "flex-start";
       counterItem.style.minHeight = "60px";
       counterItem.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+      counterItem.style.flexWrap = "wrap";
+      counterItem.style.gap = "12px";
 
       // Left side: Counter name and number
       const leftSection = counterItem.createDiv();
@@ -131,6 +133,10 @@ export class PlayerStatView extends ItemView {
       rightSection.style.display = "flex";
       rightSection.style.gap = "6px";
       rightSection.style.marginLeft = "12px";
+      rightSection.style.flexWrap = "wrap";
+      rightSection.style.justifyContent = "flex-end";
+      rightSection.style.flex = "1 1 auto";
+      rightSection.style.minWidth = "0";
 
       const decrementBtn = rightSection.createEl("button", { text: "−" });
       this.styleSmallButton(decrementBtn, "#dc3545");
@@ -192,7 +198,8 @@ export class PlayerStatView extends ItemView {
     btn.style.fontSize = "14px";
     btn.style.fontWeight = "bold";
     btn.style.whiteSpace = "nowrap";
-    btn.style.minWidth = "32px";
+    btn.style.minWidth = "auto";
+    btn.style.flex = "0 1 auto";
   }
 
   private showAddCounterDialog() {
