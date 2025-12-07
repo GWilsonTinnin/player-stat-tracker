@@ -60,6 +60,19 @@ export default class PlayerStatCounterPlugin extends Plugin {
       callback: () => this.activateView(),
     });
 
+    // Add command to debug counters
+    this.addCommand({
+      id: "debug-player-stat-counters",
+      name: "Debug: Show All Counters",
+      callback: () => {
+        console.log("Player Stat Tracker - Current Counters:");
+        this.counters.forEach((counter) => {
+          console.log(`  ${counter.key}: ${counter.value}`);
+        });
+        console.log("Looking for variables in format: {{counter_key}}");
+      },
+    });
+
     // Add command to refresh variable replacements
     this.addCommand({
       id: "refresh-player-stat-variables",
