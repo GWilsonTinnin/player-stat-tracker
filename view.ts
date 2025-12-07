@@ -251,6 +251,50 @@ export class PlayerStatView extends ItemView {
     logInput.style.fontFamily = "monospace";
     logInput.style.fontSize = "12px";
 
+    // Variable Reference Display
+    const varLabel = form.createEl("label", { text: "Variable Reference:" });
+    varLabel.style.display = "block";
+    varLabel.style.marginBottom = "5px";
+    varLabel.style.fontWeight = "bold";
+    varLabel.style.fontSize = "12px";
+
+    const varDiv = form.createDiv();
+    varDiv.style.padding = "8px";
+    varDiv.style.backgroundColor = "var(--background-secondary)";
+    varDiv.style.borderRadius = "4px";
+    varDiv.style.marginBottom = "15px";
+    varDiv.style.fontFamily = "monospace";
+    varDiv.style.fontSize = "12px";
+    varDiv.style.wordBreak = "break-all";
+    varDiv.style.cursor = "pointer";
+    varDiv.style.userSelect = "all";
+
+    // Function to generate variable reference
+    const generateVarRef = (name: string): string => {
+      const varName = name.toLowerCase().replace(/\s+/g, "_");
+      return `{{${varName}}}`;
+    };
+
+    const updateVarDisplay = () => {
+      varDiv.textContent = generateVarRef(nameInput.value.trim() || "counter");
+    };
+
+    updateVarDisplay();
+    nameInput.addEventListener("input", updateVarDisplay);
+
+    varDiv.addEventListener("click", () => {
+      const text = varDiv.textContent || "";
+      navigator.clipboard.writeText(text).then(() => {
+        const originalBg = varDiv.style.backgroundColor;
+        varDiv.style.backgroundColor = "#28a745";
+        varDiv.style.color = "white";
+        setTimeout(() => {
+          varDiv.style.backgroundColor = originalBg;
+          varDiv.style.color = "";
+        }, 200);
+      });
+    });
+
     const buttonContainer = form.createDiv();
     buttonContainer.style.display = "flex";
     buttonContainer.style.gap = "10px";
@@ -374,6 +418,50 @@ export class PlayerStatView extends ItemView {
     logInput.style.minHeight = "100px";
     logInput.style.fontFamily = "monospace";
     logInput.style.fontSize = "12px";
+
+    // Variable Reference Display
+    const varLabel = form.createEl("label", { text: "Variable Reference:" });
+    varLabel.style.display = "block";
+    varLabel.style.marginBottom = "5px";
+    varLabel.style.fontWeight = "bold";
+    varLabel.style.fontSize = "12px";
+
+    const varDiv = form.createDiv();
+    varDiv.style.padding = "8px";
+    varDiv.style.backgroundColor = "var(--background-secondary)";
+    varDiv.style.borderRadius = "4px";
+    varDiv.style.marginBottom = "15px";
+    varDiv.style.fontFamily = "monospace";
+    varDiv.style.fontSize = "12px";
+    varDiv.style.wordBreak = "break-all";
+    varDiv.style.cursor = "pointer";
+    varDiv.style.userSelect = "all";
+
+    // Function to generate variable reference
+    const generateVarRef = (name: string): string => {
+      const varName = name.toLowerCase().replace(/\s+/g, "_");
+      return `{{${varName}}}`;
+    };
+
+    const updateVarDisplay = () => {
+      varDiv.textContent = generateVarRef(nameInput.value.trim() || "counter");
+    };
+
+    updateVarDisplay();
+    nameInput.addEventListener("input", updateVarDisplay);
+
+    varDiv.addEventListener("click", () => {
+      const text = varDiv.textContent || "";
+      navigator.clipboard.writeText(text).then(() => {
+        const originalBg = varDiv.style.backgroundColor;
+        varDiv.style.backgroundColor = "#28a745";
+        varDiv.style.color = "white";
+        setTimeout(() => {
+          varDiv.style.backgroundColor = originalBg;
+          varDiv.style.color = "";
+        }, 200);
+      });
+    });
 
     const buttonContainer = form.createDiv();
     buttonContainer.style.display = "flex";
