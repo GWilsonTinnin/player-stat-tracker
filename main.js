@@ -786,15 +786,15 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
           this.app.workspace.updateOptions();
         }
       });
-      this.registerMarkdownPostProcessor((el, ctx) => {
+      this.registerMarkdownPostProcessor((el, ctx) => __async(this, null, function* () {
         var _a, _b;
-        console.log("[PlayerStat] Post-processor called");
+        console.log("[PlayerStat] \u2713 Post-processor called!");
         console.log("  tagName:", el.tagName);
         console.log("  classes:", el.className);
         console.log("  innerHTML:", (_a = el.innerHTML) == null ? void 0 : _a.substring(0, 100));
         console.log("  textContent:", (_b = el.textContent) == null ? void 0 : _b.substring(0, 100));
         this.replaceVariablesInElement(el);
-      });
+      }));
       this.registerInterval(
         window.setInterval(() => {
           this.updateAllVariables();

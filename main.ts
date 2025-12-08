@@ -117,15 +117,15 @@ export default class PlayerStatCounterPlugin extends Plugin {
     });
 
     // Register markdown post processor for variable replacement
-    this.registerMarkdownPostProcessor((el: HTMLElement, ctx: any) => {
-      console.log("[PlayerStat] Post-processor called");
+    // Using priority 100 to ensure this runs after other processors
+    this.registerMarkdownPostProcessor(async (el: HTMLElement, ctx: any) => {
+      console.log("[PlayerStat] ✓ Post-processor called!");
       console.log("  tagName:", el.tagName);
       console.log("  classes:", el.className);
       console.log("  innerHTML:", el.innerHTML?.substring(0, 100));
       console.log("  textContent:", el.textContent?.substring(0, 100));
       
-      // The post-processor is called for each rendered block
-      // We need to process it immediately, not through a container search
+      // Process element to replace variables
       this.replaceVariablesInElement(el);
     });
 
