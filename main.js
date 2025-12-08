@@ -1018,7 +1018,49 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
       console.log(`[PlayerStat] \u2717 No replacements made for this node`);
     }
   }
+  styleVariableLink(link) {
+    link.style.fontWeight = "bold";
+    link.style.color = "#0066cc";
+    link.style.cursor = "pointer";
+    link.style.textDecoration = "none";
+    link.style.borderBottom = "1px solid #0066cc";
+    link.style.padding = "0 2px";
+    link.style.borderRadius = "2px";
+    link.style.transition = "all 0.15s ease";
+    link.style.display = "inline-block";
+    link.style.backgroundColor = "transparent";
+    const isDarkMode = document.body.classList.contains("theme-dark");
+    if (isDarkMode) {
+      link.style.color = "#5c9cff";
+      link.style.borderBottomColor = "#5c9cff";
+    }
+    link.addEventListener("mouseenter", () => {
+      if (document.body.classList.contains("theme-dark")) {
+        link.style.backgroundColor = "rgba(92, 156, 255, 0.2)";
+        link.style.boxShadow = "0 0 6px rgba(92, 156, 255, 0.3)";
+        link.style.color = "#7eb3ff";
+      } else {
+        link.style.backgroundColor = "rgba(0, 102, 204, 0.2)";
+        link.style.boxShadow = "0 0 6px rgba(0, 102, 204, 0.3)";
+        link.style.color = "#0055aa";
+      }
+      link.style.borderBottomWidth = "2px";
+      link.style.paddingBottom = "1px";
+    });
+    link.addEventListener("mouseleave", () => {
+      link.style.backgroundColor = "transparent";
+      link.style.boxShadow = "none";
+      link.style.borderBottomWidth = "1px";
+      link.style.paddingBottom = "0";
+      if (document.body.classList.contains("theme-dark")) {
+        link.style.color = "#5c9cff";
+      } else {
+        link.style.color = "#0066cc";
+      }
+    });
+  }
   attachLinkListeners(link) {
+    this.styleVariableLink(link);
     link.addEventListener("click", (e) => {
       e.preventDefault();
       const counterKey = link.getAttribute("data-counter-key");
