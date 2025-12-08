@@ -540,13 +540,22 @@ export default class PlayerStatCounterPlugin extends Plugin {
   }
 
   private addPluginStyles() {
+    // Remove existing styles first to avoid duplicates
+    const existingStyle = document.getElementById("player-stat-tracker-styles");
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+
     const css = `
       /* Player Stat Tracker - Variable Link Styling */
 
-      /* Main variable link styling */
-      .markdown-reading-view a.player-stat-variable,
-      .markdown-preview-view a.player-stat-variable,
-      a.player-stat-variable {
+      /* Main variable link styling - using high specificity selectors */
+      .markdown-reading-view .player-stat-variable,
+      .markdown-preview-view .player-stat-variable,
+      .markdown-rendered .player-stat-variable,
+      .cm-content .player-stat-variable,
+      a.player-stat-variable,
+      .player-stat-variable {
         font-weight: bold !important;
         color: #0066cc !important;
         cursor: pointer !important;
@@ -557,44 +566,62 @@ export default class PlayerStatCounterPlugin extends Plugin {
         transition: all 0.15s ease !important;
         display: inline-block !important;
         background-color: transparent !important;
+        pointer-events: auto !important;
       }
 
       /* Hover state - light blue background */
-      .markdown-reading-view a.player-stat-variable:hover,
-      .markdown-preview-view a.player-stat-variable:hover,
-      a.player-stat-variable:hover {
+      .markdown-reading-view .player-stat-variable:hover,
+      .markdown-preview-view .player-stat-variable:hover,
+      .markdown-rendered .player-stat-variable:hover,
+      .cm-content .player-stat-variable:hover,
+      a.player-stat-variable:hover,
+      .player-stat-variable:hover {
         background-color: rgba(0, 102, 204, 0.2) !important;
         border-bottom-width: 2px !important;
         padding-bottom: 1px !important;
         box-shadow: 0 0 6px rgba(0, 102, 204, 0.3) !important;
+        color: #0055aa !important;
       }
 
       /* Active/click state - darker blue background */
-      .markdown-reading-view a.player-stat-variable:active,
-      .markdown-preview-view a.player-stat-variable:active,
-      a.player-stat-variable:active {
+      .markdown-reading-view .player-stat-variable:active,
+      .markdown-preview-view .player-stat-variable:active,
+      .markdown-rendered .player-stat-variable:active,
+      .cm-content .player-stat-variable:active,
+      a.player-stat-variable:active,
+      .player-stat-variable:active {
         background-color: rgba(0, 102, 204, 0.3) !important;
         border-bottom-width: 2px !important;
       }
 
       /* Dark mode support */
-      body.theme-dark .markdown-reading-view a.player-stat-variable,
-      body.theme-dark .markdown-preview-view a.player-stat-variable,
-      body.theme-dark a.player-stat-variable {
+      body.theme-dark .markdown-reading-view .player-stat-variable,
+      body.theme-dark .markdown-preview-view .player-stat-variable,
+      body.theme-dark .markdown-rendered .player-stat-variable,
+      body.theme-dark .cm-content .player-stat-variable,
+      body.theme-dark a.player-stat-variable,
+      body.theme-dark .player-stat-variable {
         color: #5c9cff !important;
         border-bottom-color: #5c9cff !important;
       }
 
-      body.theme-dark .markdown-reading-view a.player-stat-variable:hover,
-      body.theme-dark .markdown-preview-view a.player-stat-variable:hover,
-      body.theme-dark a.player-stat-variable:hover {
+      body.theme-dark .markdown-reading-view .player-stat-variable:hover,
+      body.theme-dark .markdown-preview-view .player-stat-variable:hover,
+      body.theme-dark .markdown-rendered .player-stat-variable:hover,
+      body.theme-dark .cm-content .player-stat-variable:hover,
+      body.theme-dark a.player-stat-variable:hover,
+      body.theme-dark .player-stat-variable:hover {
         background-color: rgba(92, 156, 255, 0.2) !important;
         box-shadow: 0 0 6px rgba(92, 156, 255, 0.3) !important;
+        color: #7eb3ff !important;
       }
 
-      body.theme-dark .markdown-reading-view a.player-stat-variable:active,
-      body.theme-dark .markdown-preview-view a.player-stat-variable:active,
-      body.theme-dark a.player-stat-variable:active {
+      body.theme-dark .markdown-reading-view .player-stat-variable:active,
+      body.theme-dark .markdown-preview-view .player-stat-variable:active,
+      body.theme-dark .markdown-rendered .player-stat-variable:active,
+      body.theme-dark .cm-content .player-stat-variable:active,
+      body.theme-dark a.player-stat-variable:active,
+      body.theme-dark .player-stat-variable:active {
         background-color: rgba(92, 156, 255, 0.3) !important;
       }
     `;
