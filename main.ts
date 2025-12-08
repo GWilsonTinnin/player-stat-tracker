@@ -211,7 +211,7 @@ export default class PlayerStatCounterPlugin extends Plugin {
       
       // Check if this node or nearby nodes contain the variable
       const text = node.textContent || "";
-      if (text.includes("<") || text === key || text.includes(">")) {
+      if (text.includes("{") || text === key || text.includes("}") || text.includes(varRef)) {
         nodesToProcess.push({node, varRef, key});
       }
     }
@@ -388,6 +388,9 @@ export default class PlayerStatCounterPlugin extends Plugin {
         console.log(`[PlayerStat] Link ${idx}: Counter "${counterKey}" not found. Current text: "${currentText}"`);
       }
     });
+
+    // Also scan for any unreplaced variables in the DOM
+    this.scanAndReplaceVariables();
   }
 
   private replaceVariablesInNode(node: Node) {

@@ -840,7 +840,7 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
         continue;
       }
       const text = node.textContent || "";
-      if (text.includes("<") || text === key || text.includes(">")) {
+      if (text.includes("{") || text === key || text.includes("}") || text.includes(varRef)) {
         nodesToProcess.push({ node, varRef, key });
       }
     }
@@ -966,6 +966,7 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
         console.log(`[PlayerStat] Link ${idx}: Counter "${counterKey}" not found. Current text: "${currentText}"`);
       }
     });
+    this.scanAndReplaceVariables();
   }
   replaceVariablesInNode(node) {
     const text = node.textContent || "";
