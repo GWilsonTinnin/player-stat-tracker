@@ -177,7 +177,7 @@ export default class PlayerStatCounterPlugin extends Plugin {
     
     // Get all text content and look for variable patterns
     const fullText = element.textContent || "";
-    const variableMatches = fullText.match(/<<[\w_]+>>/g) || [];
+    const variableMatches = fullText.match(/{{[\w_]+}}/g) || [];
     
     console.log(`[PlayerStat] Full text analysis found ${variableMatches.length} potential variables: ${variableMatches.join(", ")}`);
     
@@ -271,41 +271,59 @@ export default class PlayerStatCounterPlugin extends Plugin {
       allNodes.push(node);
     }
 
-    // Now search for the pattern
-    for (let i = 0; i < allNodes.length - 1; i++) {
+    console.log(`[PlayerStat] Collected ${allNodes.length} text nodes for fragmented search`);
+    allNodes.forEach((n, idx) => {
+      console.log(`  Node ${idx}: "${n.textContent}"`);
+    });
+
+    // Now search for the pattern by looking for the key text
+    for (let i = 0; i < allNodes.length; i++) {
       const currentText = allNodes[i].textContent || "";
       
-      // Look for opening <<
-      if (currentText.includes("<<")) {
-        console.log(`[PlayerStat] Found << at node ${i}, attempting to match...`);
+      // Look for the key or opening markers
+      if (currentText.includes(key) || currentText === "{" || currentText.includes("{")) {
+        console.log(`[PlayerStat] Node ${i} might contain variable: "${currentText}"`);
         
-        // Try to reconstruct from this point
-        let reconstructed = currentText.substring(currentText.lastIndexOf("<<"));
-        let endNodeIdx = i;
+        // Try to reconstruct from this point backward and forward
+        let startIdx = i;
+        let endIdx = i;
         
-        // Keep collecting text from following nodes until we find >>
-        for (let j = i + 1; j < allNodes.length && endNodeIdx === i; j++) {
-          const nextText = allNodes[j].textContent || "";
-          reconstructed += nextText;
-          
-          if (reconstructed.includes(">>")) {
-            endNodeIdx = j;
+        // Search backward for {{
+        for (let j = i; j >= Math.max(0, i - 5); j--) {
+          const text = allNodes[j].textContent || "";
+          if (text.includes("{{") || (j < i && (text === "{" || text === "{{"))) {
+            startIdx = j;
             break;
           }
         }
         
-        // Check if we found the complete variable
+        // Search forward for }}
+        for (let j = i; j <= Math.min(allNodes.length - 1, i + 5); j++) {
+          const text = allNodes[j].textContent || "";
+          if (text.includes("}}") || (j > i && (text === "}" || text === "}}"))) {
+            endIdx = j;
+            break;
+          }
+        }
+        
+        // Reconstruct the full string
+        let reconstructed = "";
+        for (let j = startIdx; j <= endIdx; j++) {
+          reconstructed += allNodes[j].textContent;
+        }
+        
+        console.log(`[PlayerStat] Reconstructed from nodes ${startIdx}-${endIdx}: "${reconstructed}"`);
+        
         if (reconstructed.includes(varRef)) {
-          console.log(`[PlayerStat] ✓ Reconstructed "${varRef}" from nodes ${i} to ${endNodeIdx}`);
+          console.log(`[PlayerStat] ✓ Match found! Replacing nodes ${startIdx} to ${endIdx}`);
           
-          // Replace all these nodes with our link
-          const parent = allNodes[i].parentNode;
+          const parent = allNodes[startIdx].parentNode;
           if (parent) {
-            // Insert the link before the first node
-            parent.insertBefore(link, allNodes[i]);
+            // Insert the link before the first fragment node
+            parent.insertBefore(link, allNodes[startIdx]);
             
-            // Remove all the fragment nodes
-            for (let j = i; j <= endNodeIdx; j++) {
+            // Remove all fragment nodes
+            for (let j = startIdx; j <= endIdx; j++) {
               if (allNodes[j].parentNode) {
                 allNodes[j].parentNode.removeChild(allNodes[j]);
               }
@@ -335,7 +353,7 @@ export default class PlayerStatCounterPlugin extends Plugin {
       console.log(`[PlayerStat] Container ${idx} text preview: "${text.substring(0, 150)}"`);
       
       // Look for unreplaced variables
-      const unreplacedVars = text.match(/<<[\w_]+>>/g);
+      const unreplacedVars = text.match(/{{[\w_]+}}/g);
       if (unreplacedVars) {
         console.log(`[PlayerStat] Found unreplaced variables in container ${idx}: ${unreplacedVars.join(", ")}`);
       }
@@ -382,7 +400,7 @@ export default class PlayerStatCounterPlugin extends Plugin {
 
     const fragment = document.createDocumentFragment();
     let lastIndex = 0;
-    const regex = /<<([\w_]+)>>/g;
+    const regex = /{{([\w_]+)}}/g;
     let match;
     let hasReplacement = false;
     const createdLinks: HTMLElement[] = [];

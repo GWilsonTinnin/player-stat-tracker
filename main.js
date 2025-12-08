@@ -252,43 +252,43 @@ var PlayerStatView = class extends import_obsidian.ItemView {
     modal.style.minWidth = "300px";
     modal.style.maxHeight = "80vh";
     modal.style.overflowY = "auto";
-    const title = modal.createEl("h3", { text: "Add New Counter" });
+    const title = modal.createEl("h3", { text: "Add Counter" });
     title.style.marginTop = "0";
     const form = modal.createDiv("form");
     const nameLabel = form.createEl("label", { text: "Counter Name:" });
     nameLabel.style.display = "block";
-    nameLabel.style.marginBottom = "5px";
+    nameLabel.style.marginBottom = "10px";
     nameLabel.style.fontWeight = "bold";
     const nameInput = form.createEl("input", {
       type: "text",
-      placeholder: "e.g., Health, Mana, Experience"
+      placeholder: "e.g., Health, Mana"
     });
     nameInput.style.width = "100%";
-    nameInput.style.padding = "8px";
+    nameInput.style.padding = "10px";
     nameInput.style.marginBottom = "15px";
     nameInput.style.border = "1px solid var(--divider-color)";
     nameInput.style.borderRadius = "4px";
     nameInput.style.boxSizing = "border-box";
-    const logLabel = form.createEl("label", { text: "Log/Notes:" });
+    nameInput.style.fontSize = "16px";
+    const logLabel = form.createEl("label", { text: "Log/Comment (optional):" });
     logLabel.style.display = "block";
-    logLabel.style.marginBottom = "5px";
+    logLabel.style.marginBottom = "10px";
     logLabel.style.fontWeight = "bold";
-    const logInput = form.createEl("textarea");
-    logInput.placeholder = "Add notes or log information about this counter";
+    const logInput = form.createEl("textarea", {
+      placeholder: "e.g., Notes about this counter"
+    });
     logInput.style.width = "100%";
-    logInput.style.padding = "8px";
+    logInput.style.padding = "10px";
     logInput.style.marginBottom = "15px";
     logInput.style.border = "1px solid var(--divider-color)";
     logInput.style.borderRadius = "4px";
     logInput.style.boxSizing = "border-box";
-    logInput.style.minHeight = "100px";
-    logInput.style.fontFamily = "monospace";
-    logInput.style.fontSize = "12px";
+    logInput.style.fontSize = "16px";
+    logInput.style.minHeight = "80px";
     const varLabel = form.createEl("label", { text: "Variable Reference:" });
     varLabel.style.display = "block";
-    varLabel.style.marginBottom = "5px";
+    varLabel.style.marginBottom = "10px";
     varLabel.style.fontWeight = "bold";
-    varLabel.style.fontSize = "12px";
     const varDiv = form.createDiv();
     varDiv.style.padding = "8px";
     varDiv.style.backgroundColor = "var(--background-secondary)";
@@ -301,25 +301,8 @@ var PlayerStatView = class extends import_obsidian.ItemView {
     varDiv.style.userSelect = "all";
     const generateVarRef = (name) => {
       const varName = name.toLowerCase().replace(/\s+/g, "_");
-      return `<<${varName}>>`;
+      return `{{${varName}}}`;
     };
-    const updateVarDisplay = () => {
-      varDiv.textContent = generateVarRef(nameInput.value.trim() || "counter");
-    };
-    updateVarDisplay();
-    nameInput.addEventListener("input", updateVarDisplay);
-    varDiv.addEventListener("click", () => {
-      const text = varDiv.textContent || "";
-      navigator.clipboard.writeText(text).then(() => {
-        const originalBg = varDiv.style.backgroundColor;
-        varDiv.style.backgroundColor = "#28a745";
-        varDiv.style.color = "white";
-        setTimeout(() => {
-          varDiv.style.backgroundColor = originalBg;
-          varDiv.style.color = "";
-        }, 200);
-      });
-    });
     const buttonContainer = form.createDiv();
     buttonContainer.style.display = "flex";
     buttonContainer.style.gap = "10px";
@@ -444,7 +427,7 @@ var PlayerStatView = class extends import_obsidian.ItemView {
     varDiv.style.userSelect = "all";
     const generateVarRef = (name) => {
       const varName = name.toLowerCase().replace(/\s+/g, "_");
-      return `<<${varName}>>`;
+      return `{{${varName}}}`;
     };
     const updateVarDisplay = () => {
       varDiv.textContent = generateVarRef(nameInput.value.trim() || "counter");
@@ -492,7 +475,7 @@ var PlayerStatView = class extends import_obsidian.ItemView {
     saveBtn.addEventListener("click", () => __async(this, null, function* () {
       const newName = nameInput.value.trim();
       if (newName) {
-        counter.key = newName.toLowerCase().replace(/\s+/g, "-");
+        counter.key = newName.toLowerCase().replace(/\s+/g, "_");
         counter.log = logInput.value.trim();
         yield this.plugin.saveCounters();
         overlay.remove();
@@ -834,7 +817,7 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
     console.log(`[PlayerStat] Replace variables in element, tagName: ${element.tagName}`);
     console.log(`[PlayerStat] Element content: "${(_a = element.textContent) == null ? void 0 : _a.substring(0, 100)}"`);
     const fullText = element.textContent || "";
-    const variableMatches = fullText.match(/<<[\w_]+>>/g) || [];
+    const variableMatches = fullText.match(/{{[\w_]+}}/g) || [];
     console.log(`[PlayerStat] Full text analysis found ${variableMatches.length} potential variables: ${variableMatches.join(", ")}`);
     variableMatches.forEach((varRef) => {
       const key = varRef.slice(2, -2);
@@ -899,26 +882,41 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
     while (node = walker.nextNode()) {
       allNodes.push(node);
     }
-    for (let i = 0; i < allNodes.length - 1; i++) {
+    console.log(`[PlayerStat] Collected ${allNodes.length} text nodes for fragmented search`);
+    allNodes.forEach((n, idx) => {
+      console.log(`  Node ${idx}: "${n.textContent}"`);
+    });
+    for (let i = 0; i < allNodes.length; i++) {
       const currentText = allNodes[i].textContent || "";
-      if (currentText.includes("<<")) {
-        console.log(`[PlayerStat] Found << at node ${i}, attempting to match...`);
-        let reconstructed = currentText.substring(currentText.lastIndexOf("<<"));
-        let endNodeIdx = i;
-        for (let j = i + 1; j < allNodes.length && endNodeIdx === i; j++) {
-          const nextText = allNodes[j].textContent || "";
-          reconstructed += nextText;
-          if (reconstructed.includes(">>")) {
-            endNodeIdx = j;
+      if (currentText.includes(key) || currentText === "{" || currentText.includes("{")) {
+        console.log(`[PlayerStat] Node ${i} might contain variable: "${currentText}"`);
+        let startIdx = i;
+        let endIdx = i;
+        for (let j = i; j >= Math.max(0, i - 5); j--) {
+          const text = allNodes[j].textContent || "";
+          if (text.includes("{{") || j < i && (text === "{" || text === "{{")) {
+            startIdx = j;
             break;
           }
         }
+        for (let j = i; j <= Math.min(allNodes.length - 1, i + 5); j++) {
+          const text = allNodes[j].textContent || "";
+          if (text.includes("}}") || j > i && (text === "}" || text === "}}")) {
+            endIdx = j;
+            break;
+          }
+        }
+        let reconstructed = "";
+        for (let j = startIdx; j <= endIdx; j++) {
+          reconstructed += allNodes[j].textContent;
+        }
+        console.log(`[PlayerStat] Reconstructed from nodes ${startIdx}-${endIdx}: "${reconstructed}"`);
         if (reconstructed.includes(varRef)) {
-          console.log(`[PlayerStat] \u2713 Reconstructed "${varRef}" from nodes ${i} to ${endNodeIdx}`);
-          const parent = allNodes[i].parentNode;
+          console.log(`[PlayerStat] \u2713 Match found! Replacing nodes ${startIdx} to ${endIdx}`);
+          const parent = allNodes[startIdx].parentNode;
           if (parent) {
-            parent.insertBefore(link, allNodes[i]);
-            for (let j = i; j <= endNodeIdx; j++) {
+            parent.insertBefore(link, allNodes[startIdx]);
+            for (let j = startIdx; j <= endIdx; j++) {
               if (allNodes[j].parentNode) {
                 allNodes[j].parentNode.removeChild(allNodes[j]);
               }
@@ -940,7 +938,7 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
       console.log(`[PlayerStat] Scanning container ${idx}...`);
       const text = preview.textContent || "";
       console.log(`[PlayerStat] Container ${idx} text preview: "${text.substring(0, 150)}"`);
-      const unreplacedVars = text.match(/<<[\w_]+>>/g);
+      const unreplacedVars = text.match(/{{[\w_]+}}/g);
       if (unreplacedVars) {
         console.log(`[PlayerStat] Found unreplaced variables in container ${idx}: ${unreplacedVars.join(", ")}`);
       }
@@ -977,7 +975,7 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
     console.log(`[PlayerStat] Available counters: ${this.counters.map((c) => `${c.key}=${c.value}`).join(", ")}`);
     const fragment = document.createDocumentFragment();
     let lastIndex = 0;
-    const regex = /<<([\w_]+)>>/g;
+    const regex = /{{([\w_]+)}}/g;
     let match;
     let hasReplacement = false;
     const createdLinks = [];

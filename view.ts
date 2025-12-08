@@ -224,7 +224,7 @@ export class PlayerStatView extends ItemView {
     modal.style.maxHeight = "80vh";
     modal.style.overflowY = "auto";
 
-    const title = modal.createEl("h3", { text: "Add New Counter" });
+    const title = modal.createEl("h3", { text: "Add Counter" });
     title.style.marginTop = "0";
 
     const form = modal.createDiv("form");
@@ -232,44 +232,44 @@ export class PlayerStatView extends ItemView {
     // Counter Name
     const nameLabel = form.createEl("label", { text: "Counter Name:" });
     nameLabel.style.display = "block";
-    nameLabel.style.marginBottom = "5px";
+    nameLabel.style.marginBottom = "10px";
     nameLabel.style.fontWeight = "bold";
 
     const nameInput = form.createEl("input", {
       type: "text",
-      placeholder: "e.g., Health, Mana, Experience"
+      placeholder: "e.g., Health, Mana"
     }) as HTMLInputElement;
     nameInput.style.width = "100%";
-    nameInput.style.padding = "8px";
+    nameInput.style.padding = "10px";
     nameInput.style.marginBottom = "15px";
     nameInput.style.border = "1px solid var(--divider-color)";
     nameInput.style.borderRadius = "4px";
     nameInput.style.boxSizing = "border-box";
+    nameInput.style.fontSize = "16px";
 
-    // Log Field
-    const logLabel = form.createEl("label", { text: "Log/Notes:" });
+    // Log/Comment
+    const logLabel = form.createEl("label", { text: "Log/Comment (optional):" });
     logLabel.style.display = "block";
-    logLabel.style.marginBottom = "5px";
+    logLabel.style.marginBottom = "10px";
     logLabel.style.fontWeight = "bold";
 
-    const logInput = form.createEl("textarea") as HTMLTextAreaElement;
-    logInput.placeholder = "Add notes or log information about this counter";
+    const logInput = form.createEl("textarea", {
+      placeholder: "e.g., Notes about this counter"
+    }) as HTMLTextAreaElement;
     logInput.style.width = "100%";
-    logInput.style.padding = "8px";
+    logInput.style.padding = "10px";
     logInput.style.marginBottom = "15px";
     logInput.style.border = "1px solid var(--divider-color)";
     logInput.style.borderRadius = "4px";
     logInput.style.boxSizing = "border-box";
-    logInput.style.minHeight = "100px";
-    logInput.style.fontFamily = "monospace";
-    logInput.style.fontSize = "12px";
+    logInput.style.fontSize = "16px";
+    logInput.style.minHeight = "80px";
 
     // Variable Reference Display
     const varLabel = form.createEl("label", { text: "Variable Reference:" });
     varLabel.style.display = "block";
-    varLabel.style.marginBottom = "5px";
+    varLabel.style.marginBottom = "10px";
     varLabel.style.fontWeight = "bold";
-    varLabel.style.fontSize = "12px";
 
     const varDiv = form.createDiv();
     varDiv.style.padding = "8px";
@@ -285,28 +285,8 @@ export class PlayerStatView extends ItemView {
     // Function to generate variable reference
     const generateVarRef = (name: string): string => {
       const varName = name.toLowerCase().replace(/\s+/g, "_");
-      return `<<${varName}>>`;
+      return `{{${varName}}}`;
     };
-
-    const updateVarDisplay = () => {
-      varDiv.textContent = generateVarRef(nameInput.value.trim() || "counter");
-    };
-
-    updateVarDisplay();
-    nameInput.addEventListener("input", updateVarDisplay);
-
-    varDiv.addEventListener("click", () => {
-      const text = varDiv.textContent || "";
-      navigator.clipboard.writeText(text).then(() => {
-        const originalBg = varDiv.style.backgroundColor;
-        varDiv.style.backgroundColor = "#28a745";
-        varDiv.style.color = "white";
-        setTimeout(() => {
-          varDiv.style.backgroundColor = originalBg;
-          varDiv.style.color = "";
-        }, 200);
-      });
-    });
 
     const buttonContainer = form.createDiv();
     buttonContainer.style.display = "flex";
@@ -453,7 +433,7 @@ export class PlayerStatView extends ItemView {
     // Function to generate variable reference
     const generateVarRef = (name: string): string => {
       const varName = name.toLowerCase().replace(/\s+/g, "_");
-      return `<<${varName}>>`;
+      return `{{${varName}}}`;
     };
 
     const updateVarDisplay = () => {
@@ -509,7 +489,7 @@ export class PlayerStatView extends ItemView {
     saveBtn.addEventListener("click", async () => {
       const newName = nameInput.value.trim();
       if (newName) {
-        counter.key = newName.toLowerCase().replace(/\s+/g, "-");
+        counter.key = newName.toLowerCase().replace(/\s+/g, "_");
         counter.log = logInput.value.trim();
         await this.plugin.saveCounters();
         overlay.remove();
