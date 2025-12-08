@@ -793,36 +793,19 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
         console.log("  classes:", el.className);
         console.log("  innerHTML:", (_a = el.innerHTML) == null ? void 0 : _a.substring(0, 100));
         console.log("  textContent:", (_b = el.textContent) == null ? void 0 : _b.substring(0, 100));
-        this.processMarkdownElement(el);
+        this.replaceVariablesInElement(el);
       });
       this.registerInterval(
         window.setInterval(() => {
-          this.scanAllMarkdownContainers();
-        }, 2e3)
-        // Scan every 2 seconds
+          this.updateAllVariables();
+        }, 1e3)
+        // Update variable values every 1 second
       );
     });
   }
-  scanAllMarkdownContainers() {
-    const containers = document.querySelectorAll(".markdown-reading-view, .markdown-preview-view");
-    console.log(`[PlayerStat] Scanning ${containers.length} markdown containers`);
-    const editors = document.querySelectorAll(".cm-content, .CodeMirror");
-    console.log(`[PlayerStat] Found ${editors.length} editor containers`);
-    editors.forEach((editor, idx) => {
-      var _a;
-      console.log(`[PlayerStat] Editor ${idx} text preview: "${(_a = editor.textContent) == null ? void 0 : _a.substring(0, 100)}"`);
-    });
-    containers.forEach((container, idx) => {
-      var _a;
-      console.log(`[PlayerStat] Scanning container ${idx}, HTML length: ${(_a = container.innerHTML) == null ? void 0 : _a.length}`);
-      this.processMarkdownElement(container);
-    });
-  }
-  processMarkdownElement(element) {
-    var _a, _b, _c;
-    console.log(`[PlayerStat] Processing element, tagName: ${element.tagName}`);
-    console.log(`[PlayerStat] Element innerHTML: ${(_a = element.innerHTML) == null ? void 0 : _a.substring(0, 200)}`);
-    console.log(`[PlayerStat] Element textContent: ${(_b = element.textContent) == null ? void 0 : _b.substring(0, 200)}`);
+  replaceVariablesInElement(element) {
+    var _a;
+    console.log(`[PlayerStat] Replace variables in element, tagName: ${element.tagName}`);
     const walker = document.createTreeWalker(
       element,
       NodeFilter.SHOW_TEXT,
@@ -831,27 +814,20 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
     );
     const nodesToProcess = [];
     let node;
-    let allTextFound = "";
     while (node = walker.nextNode()) {
-      allTextFound += node.textContent + " | ";
       const parent = node.parentElement;
       if (parent == null ? void 0 : parent.classList.contains("player-stat-variable")) {
-        console.log(`[PlayerStat] Skipping node already in player-stat-variable`);
         continue;
       }
-      if ((_c = node.textContent) == null ? void 0 : _c.includes("<<")) {
-        console.log(`[PlayerStat] Found variable text node: "${node.textContent}"`);
+      if ((_a = node.textContent) == null ? void 0 : _a.includes("<<")) {
+        console.log(`[PlayerStat] Found variable in text node: "${node.textContent}"`);
         nodesToProcess.push(node);
       }
     }
-    console.log(`[PlayerStat] All text nodes found: ${allTextFound}`);
-    console.log(`[PlayerStat] Nodes to process: ${nodesToProcess.length}`);
-    nodesToProcess.forEach((node2, idx) => {
-      console.log(`[PlayerStat] Processing node ${idx}`);
+    console.log(`[PlayerStat] Found ${nodesToProcess.length} nodes with variables to replace`);
+    nodesToProcess.forEach((node2) => {
       this.replaceVariablesInNode(node2);
     });
-    console.log(`[PlayerStat] After replacement, updating all variable links`);
-    this.updateAllVariables();
   }
   updateAllVariables() {
     const variableLinks = document.querySelectorAll(".player-stat-variable");

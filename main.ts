@@ -123,39 +123,22 @@ export default class PlayerStatCounterPlugin extends Plugin {
       console.log("  classes:", el.className);
       console.log("  innerHTML:", el.innerHTML?.substring(0, 100));
       console.log("  textContent:", el.textContent?.substring(0, 100));
-      // Process the element directly - this is called for each rendered block
-      this.processMarkdownElement(el);
+      
+      // The post-processor is called for each rendered block
+      // We need to process it immediately, not through a container search
+      this.replaceVariablesInElement(el);
     });
 
-    // Periodically scan all markdown containers for variables
+    // Also scan on a delay for any updates
     this.registerInterval(
       window.setInterval(() => {
-        this.scanAllMarkdownContainers();
-      }, 2000) // Scan every 2 seconds
+        this.updateAllVariables();
+      }, 1000) // Update variable values every 1 second
     );
   }
 
-  private scanAllMarkdownContainers() {
-    const containers = document.querySelectorAll(".markdown-reading-view, .markdown-preview-view");
-    console.log(`[PlayerStat] Scanning ${containers.length} markdown containers`);
-    
-    // Also check for editor mode containers
-    const editors = document.querySelectorAll(".cm-content, .CodeMirror");
-    console.log(`[PlayerStat] Found ${editors.length} editor containers`);
-    editors.forEach((editor, idx) => {
-      console.log(`[PlayerStat] Editor ${idx} text preview: "${(editor as HTMLElement).textContent?.substring(0, 100)}"`);
-    });
-    
-    containers.forEach((container, idx) => {
-      console.log(`[PlayerStat] Scanning container ${idx}, HTML length: ${(container as HTMLElement).innerHTML?.length}`);
-      this.processMarkdownElement(container as HTMLElement);
-    });
-  }
-
-  private processMarkdownElement(element: HTMLElement) {
-    console.log(`[PlayerStat] Processing element, tagName: ${element.tagName}`);
-    console.log(`[PlayerStat] Element innerHTML: ${element.innerHTML?.substring(0, 200)}`);
-    console.log(`[PlayerStat] Element textContent: ${element.textContent?.substring(0, 200)}`);
+  private replaceVariablesInElement(element: HTMLElement) {
+    console.log(`[PlayerStat] Replace variables in element, tagName: ${element.tagName}`);
     
     // Find all text nodes and replace variables
     const walker = document.createTreeWalker(
@@ -167,35 +150,25 @@ export default class PlayerStatCounterPlugin extends Plugin {
 
     const nodesToProcess: Node[] = [];
     let node: Node | null;
-    let allTextFound = "";
 
     while ((node = walker.nextNode())) {
-      allTextFound += node.textContent + " | ";
-      
       // Skip nodes that are already inside variable links
       const parent = node.parentElement;
       if (parent?.classList.contains("player-stat-variable")) {
-        console.log(`[PlayerStat] Skipping node already in player-stat-variable`);
         continue;
       }
       
       if (node.textContent?.includes("<<")) {
-        console.log(`[PlayerStat] Found variable text node: "${node.textContent}"`);
+        console.log(`[PlayerStat] Found variable in text node: "${node.textContent}"`);
         nodesToProcess.push(node);
       }
     }
     
-    console.log(`[PlayerStat] All text nodes found: ${allTextFound}`);
-    console.log(`[PlayerStat] Nodes to process: ${nodesToProcess.length}`);
+    console.log(`[PlayerStat] Found ${nodesToProcess.length} nodes with variables to replace`);
     
-    nodesToProcess.forEach((node, idx) => {
-      console.log(`[PlayerStat] Processing node ${idx}`);
+    nodesToProcess.forEach((node) => {
       this.replaceVariablesInNode(node);
     });
-
-    // Update all existing variable links with current values
-    console.log(`[PlayerStat] After replacement, updating all variable links`);
-    this.updateAllVariables();
   }
 
   private updateAllVariables() {
