@@ -63,20 +63,45 @@ export default class PlayerStatCounterPlugin extends Plugin {
       callback: () => this.activateView(),
     });
 
-    // Add command to debug counters
+    // Add command to inspect DOM rendering
     this.addCommand({
-      id: "debug-player-stat-counters",
-      name: "Debug: Show All Counters",
+      id: "debug-player-stat-dom",
+      name: "Debug: Inspect DOM for variables",
       callback: () => {
-        console.log("=== Player Stat Tracker - Current Counters ===");
-        console.log(`Total counters: ${this.counters.length}`);
-        this.counters.forEach((counter) => {
-          console.log(`  ${counter.key}: ${counter.value} (type: ${counter.type})`);
-        });
-        console.log("Looking for variables in format: <<counter_key>>");
+        console.log("=== Inspecting DOM for variable references ===");
         
-        // Also check if post-processor was registered
-        console.log("[PlayerStat] Post-processor should be active");
+        const container = document.querySelector(".markdown-preview-view");
+        if (!container) {
+          console.log("No markdown preview container found");
+          return;
+        }
+        
+        console.log("Container HTML:", container.innerHTML.substring(0, 500));
+        
+        // Look for all text that might be a variable
+        const walker = document.createTreeWalker(
+          container,
+          NodeFilter.SHOW_TEXT,
+          null,
+          false
+        );
+        
+        let node: Node | null;
+        let nodeCount = 0;
+        while ((node = walker.nextNode())) {
+          const text = node.textContent || "";
+          if (text.includes("<") || text.includes(">") || text.includes("health") || text.includes("dean") || text.includes("mana")) {
+            console.log(`Text node ${nodeCount}: "${text}"`);
+          }
+          nodeCount++;
+        }
+        
+        // Also check for any elements with specific classes
+        const varLinks = container.querySelectorAll(".player-stat-variable");
+        console.log(`Found ${varLinks.length} .player-stat-variable elements`);
+        varLinks.forEach((el, i) => {
+          console.log(`  Link ${i}: key="${el.getAttribute("data-counter-key")}", text="${el.textContent}"`);
+        });
       },
     });
 
@@ -230,8 +255,7 @@ export default class PlayerStatCounterPlugin extends Plugin {
     link.setAttribute("href", `#${key}`);
     link.textContent = String(counter.value);
 
-    // Find the fragment nodes and replace them
-    // This is tricky - we look for nodes containing < followed by < and key and >
+    // Strategy: Find all text nodes and search for fragments
     const walker = document.createTreeWalker(
       container,
       NodeFilter.SHOW_TEXT,
@@ -239,45 +263,63 @@ export default class PlayerStatCounterPlugin extends Plugin {
       false
     );
 
-    const fragmentNodes: Node[] = [];
+    const allNodes: Node[] = [];
     let node: Node | null;
-    let foundStart = false;
-
+    
+    // Collect all text nodes first
     while ((node = walker.nextNode())) {
-      const text = node.textContent || "";
+      allNodes.push(node);
+    }
+
+    // Now search for the pattern
+    for (let i = 0; i < allNodes.length - 1; i++) {
+      const currentText = allNodes[i].textContent || "";
       
-      if (!foundStart && text === "<<") {
-        foundStart = true;
-        fragmentNodes.push(node);
-      } else if (foundStart) {
-        fragmentNodes.push(node);
+      // Look for opening <<
+      if (currentText.includes("<<")) {
+        console.log(`[PlayerStat] Found << at node ${i}, attempting to match...`);
         
-        // Check if this completes the variable
-        if (text === ">>") {
-          // Verify this is actually our variable by checking all fragments
-          const reconstructed = fragmentNodes.map(n => n.textContent).join("");
-          if (reconstructed === varRef) {
-            console.log(`[PlayerStat] ✓ Reconstructed variable from ${fragmentNodes.length} fragments`);
-            
-            // Replace all fragment nodes with the link (first node) and text nodes (rest as empty)
-            const parent = fragmentNodes[0].parentNode;
-            if (parent) {
-              parent.insertBefore(link, fragmentNodes[0]);
-              fragmentNodes.forEach(n => {
-                if (n.parentNode) {
-                  n.parentNode.removeChild(n);
-                }
-              });
-              this.attachLinkListeners(link);
-              return;
-            }
-          }
+        // Try to reconstruct from this point
+        let reconstructed = currentText.substring(currentText.lastIndexOf("<<"));
+        let endNodeIdx = i;
+        
+        // Keep collecting text from following nodes until we find >>
+        for (let j = i + 1; j < allNodes.length && endNodeIdx === i; j++) {
+          const nextText = allNodes[j].textContent || "";
+          reconstructed += nextText;
           
-          foundStart = false;
-          fragmentNodes.length = 0;
+          if (reconstructed.includes(">>")) {
+            endNodeIdx = j;
+            break;
+          }
+        }
+        
+        // Check if we found the complete variable
+        if (reconstructed.includes(varRef)) {
+          console.log(`[PlayerStat] ✓ Reconstructed "${varRef}" from nodes ${i} to ${endNodeIdx}`);
+          
+          // Replace all these nodes with our link
+          const parent = allNodes[i].parentNode;
+          if (parent) {
+            // Insert the link before the first node
+            parent.insertBefore(link, allNodes[i]);
+            
+            // Remove all the fragment nodes
+            for (let j = i; j <= endNodeIdx; j++) {
+              if (allNodes[j].parentNode) {
+                allNodes[j].parentNode.removeChild(allNodes[j]);
+              }
+            }
+            
+            this.attachLinkListeners(link);
+            console.log(`[PlayerStat] ✓ Successfully replaced fragmented variable ${varRef}`);
+            return;
+          }
         }
       }
     }
+    
+    console.log(`[PlayerStat] ✗ Could not reconstruct fragmented variable: ${varRef}`);
   }
 
   private scanAndReplaceVariables() {

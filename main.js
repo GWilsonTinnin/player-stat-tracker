@@ -746,16 +746,36 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
         callback: () => this.activateView()
       });
       this.addCommand({
-        id: "debug-player-stat-counters",
-        name: "Debug: Show All Counters",
+        id: "debug-player-stat-dom",
+        name: "Debug: Inspect DOM for variables",
         callback: () => {
-          console.log("=== Player Stat Tracker - Current Counters ===");
-          console.log(`Total counters: ${this.counters.length}`);
-          this.counters.forEach((counter) => {
-            console.log(`  ${counter.key}: ${counter.value} (type: ${counter.type})`);
+          console.log("=== Inspecting DOM for variable references ===");
+          const container = document.querySelector(".markdown-preview-view");
+          if (!container) {
+            console.log("No markdown preview container found");
+            return;
+          }
+          console.log("Container HTML:", container.innerHTML.substring(0, 500));
+          const walker = document.createTreeWalker(
+            container,
+            NodeFilter.SHOW_TEXT,
+            null,
+            false
+          );
+          let node;
+          let nodeCount = 0;
+          while (node = walker.nextNode()) {
+            const text = node.textContent || "";
+            if (text.includes("<") || text.includes(">") || text.includes("health") || text.includes("dean") || text.includes("mana")) {
+              console.log(`Text node ${nodeCount}: "${text}"`);
+            }
+            nodeCount++;
+          }
+          const varLinks = container.querySelectorAll(".player-stat-variable");
+          console.log(`Found ${varLinks.length} .player-stat-variable elements`);
+          varLinks.forEach((el, i) => {
+            console.log(`  Link ${i}: key="${el.getAttribute("data-counter-key")}", text="${el.textContent}"`);
           });
-          console.log("Looking for variables in format: <<counter_key>>");
-          console.log("[PlayerStat] Post-processor should be active");
         }
       });
       this.addCommand({
@@ -874,37 +894,43 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
       null,
       false
     );
-    const fragmentNodes = [];
+    const allNodes = [];
     let node;
-    let foundStart = false;
     while (node = walker.nextNode()) {
-      const text = node.textContent || "";
-      if (!foundStart && text === "<<") {
-        foundStart = true;
-        fragmentNodes.push(node);
-      } else if (foundStart) {
-        fragmentNodes.push(node);
-        if (text === ">>") {
-          const reconstructed = fragmentNodes.map((n) => n.textContent).join("");
-          if (reconstructed === varRef) {
-            console.log(`[PlayerStat] \u2713 Reconstructed variable from ${fragmentNodes.length} fragments`);
-            const parent = fragmentNodes[0].parentNode;
-            if (parent) {
-              parent.insertBefore(link, fragmentNodes[0]);
-              fragmentNodes.forEach((n) => {
-                if (n.parentNode) {
-                  n.parentNode.removeChild(n);
-                }
-              });
-              this.attachLinkListeners(link);
-              return;
-            }
+      allNodes.push(node);
+    }
+    for (let i = 0; i < allNodes.length - 1; i++) {
+      const currentText = allNodes[i].textContent || "";
+      if (currentText.includes("<<")) {
+        console.log(`[PlayerStat] Found << at node ${i}, attempting to match...`);
+        let reconstructed = currentText.substring(currentText.lastIndexOf("<<"));
+        let endNodeIdx = i;
+        for (let j = i + 1; j < allNodes.length && endNodeIdx === i; j++) {
+          const nextText = allNodes[j].textContent || "";
+          reconstructed += nextText;
+          if (reconstructed.includes(">>")) {
+            endNodeIdx = j;
+            break;
           }
-          foundStart = false;
-          fragmentNodes.length = 0;
+        }
+        if (reconstructed.includes(varRef)) {
+          console.log(`[PlayerStat] \u2713 Reconstructed "${varRef}" from nodes ${i} to ${endNodeIdx}`);
+          const parent = allNodes[i].parentNode;
+          if (parent) {
+            parent.insertBefore(link, allNodes[i]);
+            for (let j = i; j <= endNodeIdx; j++) {
+              if (allNodes[j].parentNode) {
+                allNodes[j].parentNode.removeChild(allNodes[j]);
+              }
+            }
+            this.attachLinkListeners(link);
+            console.log(`[PlayerStat] \u2713 Successfully replaced fragmented variable ${varRef}`);
+            return;
+          }
         }
       }
     }
+    console.log(`[PlayerStat] \u2717 Could not reconstruct fragmented variable: ${varRef}`);
   }
   scanAndReplaceVariables() {
     console.log("[PlayerStat] Scanning DOM for markdown containers...");
