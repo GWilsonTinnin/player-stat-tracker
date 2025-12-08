@@ -249,11 +249,13 @@ export default class PlayerStatCounterPlugin extends Plugin {
     console.log(`[PlayerStat] ✓ Found counter: ${key} = ${counter.value}`);
     
     // Create the replacement link
-    const link = document.createElement("a");
-    link.className = "player-stat-variable internal-link";
+    const link = document.createElement("span");
+    link.className = "player-stat-variable";
     link.setAttribute("data-counter-key", key);
-    link.setAttribute("href", `#${key}`);
     link.textContent = String(counter.value);
+    
+    // Apply styles immediately
+    this.styleVariableLink(link);
 
     // Strategy: Find all text nodes and search for fragments
     const walker = document.createTreeWalker(
@@ -425,12 +427,14 @@ export default class PlayerStatCounterPlugin extends Plugin {
       if (counter !== undefined) {
         console.log(`[PlayerStat] ✓ Found counter: ${counterKey} = ${counter.value}`);
         
-        // Create a link-like element
-        const link = document.createElement("a");
-        link.className = "player-stat-variable internal-link";
+        // Create a styled span element
+        const link = document.createElement("span");
+        link.className = "player-stat-variable";
         link.setAttribute("data-counter-key", counterKey);
-        link.setAttribute("href", `#${counterKey}`);
         link.textContent = String(counter.value);
+        
+        // Apply styles immediately
+        this.styleVariableLink(link);
 
         fragment.appendChild(link);
         createdLinks.push(link);
@@ -512,16 +516,20 @@ export default class PlayerStatCounterPlugin extends Plugin {
   }
 
   private attachLinkListeners(link: HTMLElement) {
-    // Apply inline styles
+    // Apply inline styles (may already be applied, but ensure they are)
     this.styleVariableLink(link);
     
+    // Add click handler
     link.addEventListener("click", (e) => {
       e.preventDefault();
+      e.stopPropagation();
       const counterKey = link.getAttribute("data-counter-key");
       // Open the player stat counter view
       this.activateView();
-      console.log(`Clicked counter variable: ${counterKey}`);
+      console.log(`[PlayerStat] Clicked counter variable: ${counterKey}`);
     });
+    
+    console.log(`[PlayerStat] Attached listeners to variable link: ${link.getAttribute("data-counter-key")}`);
   }
 
   private registerDataviewSource() {

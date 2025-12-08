@@ -866,11 +866,11 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
       return;
     }
     console.log(`[PlayerStat] \u2713 Found counter: ${key} = ${counter.value}`);
-    const link = document.createElement("a");
-    link.className = "player-stat-variable internal-link";
+    const link = document.createElement("span");
+    link.className = "player-stat-variable";
     link.setAttribute("data-counter-key", key);
-    link.setAttribute("href", `#${key}`);
     link.textContent = String(counter.value);
+    this.styleVariableLink(link);
     const walker = document.createTreeWalker(
       container,
       NodeFilter.SHOW_TEXT,
@@ -991,11 +991,11 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
       const counter = this.counters.find((c) => c.key === counterKey);
       if (counter !== void 0) {
         console.log(`[PlayerStat] \u2713 Found counter: ${counterKey} = ${counter.value}`);
-        const link = document.createElement("a");
-        link.className = "player-stat-variable internal-link";
+        const link = document.createElement("span");
+        link.className = "player-stat-variable";
         link.setAttribute("data-counter-key", counterKey);
-        link.setAttribute("href", `#${counterKey}`);
         link.textContent = String(counter.value);
+        this.styleVariableLink(link);
         fragment.appendChild(link);
         createdLinks.push(link);
         hasReplacement = true;
@@ -1063,10 +1063,12 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
     this.styleVariableLink(link);
     link.addEventListener("click", (e) => {
       e.preventDefault();
+      e.stopPropagation();
       const counterKey = link.getAttribute("data-counter-key");
       this.activateView();
-      console.log(`Clicked counter variable: ${counterKey}`);
+      console.log(`[PlayerStat] Clicked counter variable: ${counterKey}`);
     });
+    console.log(`[PlayerStat] Attached listeners to variable link: ${link.getAttribute("data-counter-key")}`);
   }
   registerDataviewSource() {
     const api = window.DataviewAPI;
