@@ -342,7 +342,7 @@ export class PlayerStatView extends ItemView {
       const counterName = nameInput.value.trim();
       if (counterName) {
         const newCounter: PlayerCounter = {
-          key: counterName.toLowerCase().replace(/\s+/g, "-"),
+          key: counterName.toLowerCase().replace(/\s+/g, "_"),
           type: "simple",
           value: 0,
           log: logInput.value.trim(),

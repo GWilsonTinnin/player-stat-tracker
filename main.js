@@ -350,7 +350,7 @@ var PlayerStatView = class extends import_obsidian.ItemView {
       const counterName = nameInput.value.trim();
       if (counterName) {
         const newCounter = {
-          key: counterName.toLowerCase().replace(/\s+/g, "-"),
+          key: counterName.toLowerCase().replace(/\s+/g, "_"),
           type: "simple",
           value: 0,
           log: logInput.value.trim(),
@@ -789,16 +789,18 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
         }
       });
       console.log("[PlayerStat] Registering markdown post-processor...");
-      this.registerMarkdownPostProcessor((el, ctx) => __async(this, null, function* () {
-        var _a, _b;
-        console.log("[PlayerStat] \u2713 Post-processor called!");
+      this.registerMarkdownPostProcessor((el, ctx) => {
+        var _a;
+        console.log("[PlayerStat] \u2713\u2713\u2713 POST-PROCESSOR CALLED \u2713\u2713\u2713");
         console.log("  tagName:", el.tagName);
-        console.log("  classes:", el.className);
         console.log("  innerHTML:", (_a = el.innerHTML) == null ? void 0 : _a.substring(0, 100));
-        console.log("  textContent:", (_b = el.textContent) == null ? void 0 : _b.substring(0, 100));
         this.replaceVariablesInElement(el);
-      }));
+      });
       console.log("[PlayerStat] \u2713 Post-processor registered successfully");
+      console.log("[PlayerStat] Attempting initial scan of existing markdown...");
+      setTimeout(() => {
+        this.scanAndReplaceVariables();
+      }, 500);
       this.registerInterval(
         window.setInterval(() => {
           this.updateAllVariables();
@@ -840,6 +842,15 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
     nodesToProcess.forEach((node2, idx) => {
       console.log(`[PlayerStat] Processing node ${idx}/${nodesToProcess.length}`);
       this.replaceVariablesInNode(node2);
+    });
+  }
+  scanAndReplaceVariables() {
+    console.log("[PlayerStat] Scanning DOM for markdown containers...");
+    const previews = document.querySelectorAll(".markdown-preview-view, .markdown-rendered, .cm-content");
+    console.log(`[PlayerStat] Found ${previews.length} potential markdown containers`);
+    previews.forEach((preview, idx) => {
+      console.log(`[PlayerStat] Scanning container ${idx}...`);
+      this.replaceVariablesInElement(preview);
     });
   }
   updateAllVariables() {
