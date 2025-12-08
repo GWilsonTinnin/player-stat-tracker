@@ -787,8 +787,12 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
         }
       });
       this.registerMarkdownPostProcessor((el, ctx) => {
-        var _a;
-        console.log("[PlayerStat] Post-processor called, element tagName:", el.tagName, "textContent preview:", (_a = el.textContent) == null ? void 0 : _a.substring(0, 50));
+        var _a, _b;
+        console.log("[PlayerStat] Post-processor called");
+        console.log("  tagName:", el.tagName);
+        console.log("  classes:", el.className);
+        console.log("  innerHTML:", (_a = el.innerHTML) == null ? void 0 : _a.substring(0, 100));
+        console.log("  textContent:", (_b = el.textContent) == null ? void 0 : _b.substring(0, 100));
         this.processMarkdownElement(el);
       });
       this.registerInterval(
@@ -815,8 +819,10 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
     });
   }
   processMarkdownElement(element) {
-    var _a, _b;
-    console.log(`[PlayerStat] Processing element, tagName: ${element.tagName}, text: "${(_a = element.textContent) == null ? void 0 : _a.substring(0, 50)}"`);
+    var _a, _b, _c;
+    console.log(`[PlayerStat] Processing element, tagName: ${element.tagName}`);
+    console.log(`[PlayerStat] Element innerHTML: ${(_a = element.innerHTML) == null ? void 0 : _a.substring(0, 200)}`);
+    console.log(`[PlayerStat] Element textContent: ${(_b = element.textContent) == null ? void 0 : _b.substring(0, 200)}`);
     const walker = document.createTreeWalker(
       element,
       NodeFilter.SHOW_TEXT,
@@ -825,17 +831,21 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
     );
     const nodesToProcess = [];
     let node;
+    let allTextFound = "";
     while (node = walker.nextNode()) {
+      allTextFound += node.textContent + " | ";
       const parent = node.parentElement;
       if (parent == null ? void 0 : parent.classList.contains("player-stat-variable")) {
+        console.log(`[PlayerStat] Skipping node already in player-stat-variable`);
         continue;
       }
-      if ((_b = node.textContent) == null ? void 0 : _b.includes("<<")) {
+      if ((_c = node.textContent) == null ? void 0 : _c.includes("<<")) {
         console.log(`[PlayerStat] Found variable text node: "${node.textContent}"`);
         nodesToProcess.push(node);
       }
     }
-    console.log(`[PlayerStat] Found ${nodesToProcess.length} nodes to process`);
+    console.log(`[PlayerStat] All text nodes found: ${allTextFound}`);
+    console.log(`[PlayerStat] Nodes to process: ${nodesToProcess.length}`);
     nodesToProcess.forEach((node2, idx) => {
       console.log(`[PlayerStat] Processing node ${idx}`);
       this.replaceVariablesInNode(node2);

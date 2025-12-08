@@ -118,7 +118,11 @@ export default class PlayerStatCounterPlugin extends Plugin {
 
     // Register markdown post processor for variable replacement
     this.registerMarkdownPostProcessor((el: HTMLElement, ctx: any) => {
-      console.log("[PlayerStat] Post-processor called, element tagName:", el.tagName, "textContent preview:", el.textContent?.substring(0, 50));
+      console.log("[PlayerStat] Post-processor called");
+      console.log("  tagName:", el.tagName);
+      console.log("  classes:", el.className);
+      console.log("  innerHTML:", el.innerHTML?.substring(0, 100));
+      console.log("  textContent:", el.textContent?.substring(0, 100));
       // Process the element directly - this is called for each rendered block
       this.processMarkdownElement(el);
     });
@@ -149,7 +153,9 @@ export default class PlayerStatCounterPlugin extends Plugin {
   }
 
   private processMarkdownElement(element: HTMLElement) {
-    console.log(`[PlayerStat] Processing element, tagName: ${element.tagName}, text: "${element.textContent?.substring(0, 50)}"`);
+    console.log(`[PlayerStat] Processing element, tagName: ${element.tagName}`);
+    console.log(`[PlayerStat] Element innerHTML: ${element.innerHTML?.substring(0, 200)}`);
+    console.log(`[PlayerStat] Element textContent: ${element.textContent?.substring(0, 200)}`);
     
     // Find all text nodes and replace variables
     const walker = document.createTreeWalker(
@@ -161,11 +167,15 @@ export default class PlayerStatCounterPlugin extends Plugin {
 
     const nodesToProcess: Node[] = [];
     let node: Node | null;
+    let allTextFound = "";
 
     while ((node = walker.nextNode())) {
+      allTextFound += node.textContent + " | ";
+      
       // Skip nodes that are already inside variable links
       const parent = node.parentElement;
       if (parent?.classList.contains("player-stat-variable")) {
+        console.log(`[PlayerStat] Skipping node already in player-stat-variable`);
         continue;
       }
       
@@ -174,8 +184,10 @@ export default class PlayerStatCounterPlugin extends Plugin {
         nodesToProcess.push(node);
       }
     }
-
-    console.log(`[PlayerStat] Found ${nodesToProcess.length} nodes to process`);
+    
+    console.log(`[PlayerStat] All text nodes found: ${allTextFound}`);
+    console.log(`[PlayerStat] Nodes to process: ${nodesToProcess.length}`);
+    
     nodesToProcess.forEach((node, idx) => {
       console.log(`[PlayerStat] Processing node ${idx}`);
       this.replaceVariablesInNode(node);
