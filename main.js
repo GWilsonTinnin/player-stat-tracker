@@ -728,7 +728,7 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
       if (savedSettings && savedSettings.counters) {
         this.counters = savedSettings.counters;
       }
-      this.addStyle();
+      this.addPluginStyles();
       this.addSettingTab(new PlayerStatSettingTab(this.app, this));
       this.registerView(
         VIEW_TYPE_PLAYER_STAT,
@@ -749,11 +749,13 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
         id: "debug-player-stat-counters",
         name: "Debug: Show All Counters",
         callback: () => {
-          console.log("Player Stat Tracker - Current Counters:");
+          console.log("=== Player Stat Tracker - Current Counters ===");
+          console.log(`Total counters: ${this.counters.length}`);
           this.counters.forEach((counter) => {
-            console.log(`  ${counter.key}: ${counter.value}`);
+            console.log(`  ${counter.key}: ${counter.value} (type: ${counter.type})`);
           });
-          console.log("Looking for variables in format: {{counter_key}}");
+          console.log("Looking for variables in format: <<counter_key>>");
+          console.log("[PlayerStat] Post-processor should be active");
         }
       });
       this.addCommand({
@@ -786,6 +788,7 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
           this.app.workspace.updateOptions();
         }
       });
+      console.log("[PlayerStat] Registering markdown post-processor...");
       this.registerMarkdownPostProcessor((el, ctx) => __async(this, null, function* () {
         var _a, _b;
         console.log("[PlayerStat] \u2713 Post-processor called!");
@@ -795,6 +798,7 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
         console.log("  textContent:", (_b = el.textContent) == null ? void 0 : _b.substring(0, 100));
         this.replaceVariablesInElement(el);
       }));
+      console.log("[PlayerStat] \u2713 Post-processor registered successfully");
       this.registerInterval(
         window.setInterval(() => {
           this.updateAllVariables();
@@ -804,8 +808,9 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
     });
   }
   replaceVariablesInElement(element) {
-    var _a;
+    var _a, _b;
     console.log(`[PlayerStat] Replace variables in element, tagName: ${element.tagName}`);
+    console.log(`[PlayerStat] Element content: "${(_a = element.textContent) == null ? void 0 : _a.substring(0, 100)}"`);
     const walker = document.createTreeWalker(
       element,
       NodeFilter.SHOW_TEXT,
@@ -814,18 +819,26 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
     );
     const nodesToProcess = [];
     let node;
+    let totalTextFound = "";
     while (node = walker.nextNode()) {
+      totalTextFound += `"${node.textContent}" `;
       const parent = node.parentElement;
       if (parent == null ? void 0 : parent.classList.contains("player-stat-variable")) {
+        console.log(`[PlayerStat] Skipping already-processed node: "${node.textContent}"`);
         continue;
       }
-      if ((_a = node.textContent) == null ? void 0 : _a.includes("<<")) {
-        console.log(`[PlayerStat] Found variable in text node: "${node.textContent}"`);
+      if ((_b = node.textContent) == null ? void 0 : _b.includes("<<")) {
+        console.log(`[PlayerStat] \u2713 Found variable in text node: "${node.textContent}"`);
         nodesToProcess.push(node);
       }
     }
-    console.log(`[PlayerStat] Found ${nodesToProcess.length} nodes with variables to replace`);
-    nodesToProcess.forEach((node2) => {
+    console.log(`[PlayerStat] All text nodes: ${totalTextFound}`);
+    console.log(`[PlayerStat] Nodes to process: ${nodesToProcess.length}`);
+    if (nodesToProcess.length === 0) {
+      console.log(`[PlayerStat] No variables found in this element`);
+    }
+    nodesToProcess.forEach((node2, idx) => {
+      console.log(`[PlayerStat] Processing node ${idx}/${nodesToProcess.length}`);
       this.replaceVariablesInNode(node2);
     });
   }
@@ -844,6 +857,8 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
     const text = node.textContent || "";
     const parent = node.parentNode;
     if (!parent) return;
+    console.log(`[PlayerStat] Replacing in node: "${text}"`);
+    console.log(`[PlayerStat] Available counters: ${this.counters.map((c) => `${c.key}=${c.value}`).join(", ")}`);
     const fragment = document.createDocumentFragment();
     let lastIndex = 0;
     const regex = /<<([\w_]+)>>/g;
@@ -851,7 +866,7 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
     let hasReplacement = false;
     const createdLinks = [];
     while ((match = regex.exec(text)) !== null) {
-      console.log(`[PlayerStat] Found variable match: ${match[0]} -> key: ${match[1]}`);
+      console.log(`[PlayerStat] Found variable match: "${match[0]}" -> key: "${match[1]}"`);
       if (match.index > lastIndex) {
         fragment.appendChild(
           document.createTextNode(text.substring(lastIndex, match.index))
@@ -859,38 +874,33 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
       }
       const counterKey = match[1];
       const counter = this.counters.find((c) => c.key === counterKey);
-      console.log(`[PlayerStat] Looking for counter: ${counterKey}, found: ${counter ? "YES" : "NO"}`);
       if (counter !== void 0) {
+        console.log(`[PlayerStat] \u2713 Found counter: ${counterKey} = ${counter.value}`);
         const link = document.createElement("a");
         link.className = "player-stat-variable internal-link";
         link.setAttribute("data-counter-key", counterKey);
         link.setAttribute("href", `#${counterKey}`);
         link.textContent = String(counter.value);
-        console.log(`[PlayerStat] Created variable link for ${counterKey} with value ${counter.value}`);
         fragment.appendChild(link);
         createdLinks.push(link);
         hasReplacement = true;
       } else {
+        console.log(`[PlayerStat] \u2717 Counter NOT found: ${counterKey}`);
         fragment.appendChild(document.createTextNode(match[0]));
       }
       lastIndex = regex.lastIndex;
     }
     if (hasReplacement) {
-      console.log(`[PlayerStat] Replacing node, hasReplacement: true`);
+      console.log(`[PlayerStat] \u2713 Replacing node with ${createdLinks.length} variable links`);
       if (lastIndex < text.length) {
         fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
       }
       parent.replaceChild(fragment, node);
-      console.log(`[PlayerStat] Successfully replaced node in DOM`);
-      const linkCount = parent.querySelectorAll(".player-stat-variable").length;
-      console.log(`[PlayerStat] After replacement, parent container has ${linkCount} variable links`);
-      console.log(`[PlayerStat] Found ${createdLinks.length} variable links to attach listeners to`);
       createdLinks.forEach((link) => {
-        console.log(`[PlayerStat] Attaching listener to link: ${link.getAttribute("data-counter-key")}`);
         this.attachLinkListeners(link);
       });
     } else {
-      console.log(`[PlayerStat] No replacements found in this node`);
+      console.log(`[PlayerStat] \u2717 No replacements made for this node`);
     }
   }
   attachLinkListeners(link) {
@@ -958,9 +968,8 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
       }
     });
   }
-  addStyle() {
-    const style = document.createElement("style");
-    style.textContent = `
+  addPluginStyles() {
+    const css = `
       /* Player Stat Tracker - Variable Link Styling */
 
       /* Main variable link styling */
@@ -1018,6 +1027,21 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
         background-color: rgba(92, 156, 255, 0.3) !important;
       }
     `;
+    const style = document.createElement("style");
+    style.id = "player-stat-tracker-styles";
+    style.textContent = css;
     document.head.appendChild(style);
+    console.log("[PlayerStat] CSS styles injected into document");
+    setTimeout(() => {
+      var _a, _b;
+      const injectedStyle = document.getElementById("player-stat-tracker-styles");
+      if (injectedStyle) {
+        console.log("[PlayerStat] \u2713 CSS style element found in DOM");
+        const rules = ((_b = (_a = injectedStyle.sheet) == null ? void 0 : _a.cssRules) == null ? void 0 : _b.length) || 0;
+        console.log(`[PlayerStat] \u2713 CSS rules loaded: ${rules}`);
+      } else {
+        console.log("[PlayerStat] \u2717 CSS style element NOT found in DOM");
+      }
+    }, 100);
   }
 };

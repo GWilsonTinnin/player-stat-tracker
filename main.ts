@@ -40,7 +40,7 @@ export default class PlayerStatCounterPlugin extends Plugin {
     }
 
     // Add CSS styling for variable links
-    this.addStyle();
+    this.addPluginStyles();
 
     // Add settings tab
     this.addSettingTab(new PlayerStatSettingTab(this.app, this));
@@ -68,11 +68,15 @@ export default class PlayerStatCounterPlugin extends Plugin {
       id: "debug-player-stat-counters",
       name: "Debug: Show All Counters",
       callback: () => {
-        console.log("Player Stat Tracker - Current Counters:");
+        console.log("=== Player Stat Tracker - Current Counters ===");
+        console.log(`Total counters: ${this.counters.length}`);
         this.counters.forEach((counter) => {
-          console.log(`  ${counter.key}: ${counter.value}`);
+          console.log(`  ${counter.key}: ${counter.value} (type: ${counter.type})`);
         });
-        console.log("Looking for variables in format: {{counter_key}}");
+        console.log("Looking for variables in format: <<counter_key>>");
+        
+        // Also check if post-processor was registered
+        console.log("[PlayerStat] Post-processor should be active");
       },
     });
 
@@ -118,6 +122,7 @@ export default class PlayerStatCounterPlugin extends Plugin {
 
     // Register markdown post processor for variable replacement
     // Using priority 100 to ensure this runs after other processors
+    console.log("[PlayerStat] Registering markdown post-processor...");
     this.registerMarkdownPostProcessor(async (el: HTMLElement, ctx: any) => {
       console.log("[PlayerStat] ✓ Post-processor called!");
       console.log("  tagName:", el.tagName);
@@ -128,6 +133,7 @@ export default class PlayerStatCounterPlugin extends Plugin {
       // Process element to replace variables
       this.replaceVariablesInElement(el);
     });
+    console.log("[PlayerStat] ✓ Post-processor registered successfully");
 
     // Also scan on a delay for any updates
     this.registerInterval(
@@ -139,6 +145,7 @@ export default class PlayerStatCounterPlugin extends Plugin {
 
   private replaceVariablesInElement(element: HTMLElement) {
     console.log(`[PlayerStat] Replace variables in element, tagName: ${element.tagName}`);
+    console.log(`[PlayerStat] Element content: "${element.textContent?.substring(0, 100)}"`);
     
     // Find all text nodes and replace variables
     const walker = document.createTreeWalker(
@@ -150,23 +157,33 @@ export default class PlayerStatCounterPlugin extends Plugin {
 
     const nodesToProcess: Node[] = [];
     let node: Node | null;
+    let totalTextFound = "";
 
     while ((node = walker.nextNode())) {
+      totalTextFound += `"${node.textContent}" `;
+      
       // Skip nodes that are already inside variable links
       const parent = node.parentElement;
       if (parent?.classList.contains("player-stat-variable")) {
+        console.log(`[PlayerStat] Skipping already-processed node: "${node.textContent}"`);
         continue;
       }
       
       if (node.textContent?.includes("<<")) {
-        console.log(`[PlayerStat] Found variable in text node: "${node.textContent}"`);
+        console.log(`[PlayerStat] ✓ Found variable in text node: "${node.textContent}"`);
         nodesToProcess.push(node);
       }
     }
     
-    console.log(`[PlayerStat] Found ${nodesToProcess.length} nodes with variables to replace`);
+    console.log(`[PlayerStat] All text nodes: ${totalTextFound}`);
+    console.log(`[PlayerStat] Nodes to process: ${nodesToProcess.length}`);
     
-    nodesToProcess.forEach((node) => {
+    if (nodesToProcess.length === 0) {
+      console.log(`[PlayerStat] No variables found in this element`);
+    }
+    
+    nodesToProcess.forEach((node, idx) => {
+      console.log(`[PlayerStat] Processing node ${idx}/${nodesToProcess.length}`);
       this.replaceVariablesInNode(node);
     });
   }
@@ -191,6 +208,9 @@ export default class PlayerStatCounterPlugin extends Plugin {
     const parent = node.parentNode;
     if (!parent) return;
 
+    console.log(`[PlayerStat] Replacing in node: "${text}"`);
+    console.log(`[PlayerStat] Available counters: ${this.counters.map(c => `${c.key}=${c.value}`).join(", ")}`);
+
     const fragment = document.createDocumentFragment();
     let lastIndex = 0;
     const regex = /<<([\w_]+)>>/g;
@@ -199,7 +219,8 @@ export default class PlayerStatCounterPlugin extends Plugin {
     const createdLinks: HTMLElement[] = [];
 
     while ((match = regex.exec(text)) !== null) {
-      console.log(`[PlayerStat] Found variable match: ${match[0]} -> key: ${match[1]}`);
+      console.log(`[PlayerStat] Found variable match: "${match[0]}" -> key: "${match[1]}"`);
+      
       // Add text before match
       if (match.index > lastIndex) {
         fragment.appendChild(
@@ -210,21 +231,22 @@ export default class PlayerStatCounterPlugin extends Plugin {
       // Find and replace counter variable
       const counterKey = match[1];
       const counter = this.counters.find((c) => c.key === counterKey);
-      console.log(`[PlayerStat] Looking for counter: ${counterKey}, found: ${counter ? 'YES' : 'NO'}`);
-
+      
       if (counter !== undefined) {
+        console.log(`[PlayerStat] ✓ Found counter: ${counterKey} = ${counter.value}`);
+        
         // Create a link-like element
         const link = document.createElement("a");
         link.className = "player-stat-variable internal-link";
         link.setAttribute("data-counter-key", counterKey);
         link.setAttribute("href", `#${counterKey}`);
         link.textContent = String(counter.value);
-        console.log(`[PlayerStat] Created variable link for ${counterKey} with value ${counter.value}`);
 
         fragment.appendChild(link);
         createdLinks.push(link);
         hasReplacement = true;
       } else {
+        console.log(`[PlayerStat] ✗ Counter NOT found: ${counterKey}`);
         // Variable not found - keep original text
         fragment.appendChild(document.createTextNode(match[0]));
       }
@@ -234,25 +256,20 @@ export default class PlayerStatCounterPlugin extends Plugin {
 
     // Only replace if we found variables
     if (hasReplacement) {
-      console.log(`[PlayerStat] Replacing node, hasReplacement: true`);
+      console.log(`[PlayerStat] ✓ Replacing node with ${createdLinks.length} variable links`);
+      
       // Add remaining text
       if (lastIndex < text.length) {
         fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
       }
 
       parent.replaceChild(fragment, node);
-      console.log(`[PlayerStat] Successfully replaced node in DOM`);
       
-      // Verify the links are now in the DOM
-      const linkCount = parent.querySelectorAll(".player-stat-variable").length;
-      console.log(`[PlayerStat] After replacement, parent container has ${linkCount} variable links`);
-      console.log(`[PlayerStat] Found ${createdLinks.length} variable links to attach listeners to`);
       createdLinks.forEach((link) => {
-        console.log(`[PlayerStat] Attaching listener to link: ${link.getAttribute("data-counter-key")}`);
         this.attachLinkListeners(link);
       });
     } else {
-      console.log(`[PlayerStat] No replacements found in this node`);
+      console.log(`[PlayerStat] ✗ No replacements made for this node`);
     }
   }
 
@@ -332,9 +349,8 @@ export default class PlayerStatCounterPlugin extends Plugin {
     });
   }
 
-  private addStyle() {
-    const style = document.createElement("style");
-    style.textContent = `
+  private addPluginStyles() {
+    const css = `
       /* Player Stat Tracker - Variable Link Styling */
 
       /* Main variable link styling */
@@ -392,6 +408,25 @@ export default class PlayerStatCounterPlugin extends Plugin {
         background-color: rgba(92, 156, 255, 0.3) !important;
       }
     `;
+    
+    // Direct DOM injection
+    const style = document.createElement("style");
+    style.id = "player-stat-tracker-styles";
+    style.textContent = css;
     document.head.appendChild(style);
+    
+    console.log("[PlayerStat] CSS styles injected into document");
+    
+    // Verify the styles are in the DOM
+    setTimeout(() => {
+      const injectedStyle = document.getElementById("player-stat-tracker-styles");
+      if (injectedStyle) {
+        console.log("[PlayerStat] ✓ CSS style element found in DOM");
+        const rules = injectedStyle.sheet?.cssRules?.length || 0;
+        console.log(`[PlayerStat] ✓ CSS rules loaded: ${rules}`);
+      } else {
+        console.log("[PlayerStat] ✗ CSS style element NOT found in DOM");
+      }
+    }, 100);
   }
 }
