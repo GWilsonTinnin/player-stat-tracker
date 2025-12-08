@@ -121,25 +121,28 @@ export default class PlayerStatCounterPlugin extends Plugin {
     });
 
     // Register markdown post processor for variable replacement
-    // Using priority 100 to ensure this runs after other processors
     console.log("[PlayerStat] Registering markdown post-processor...");
-    this.registerMarkdownPostProcessor(async (el: HTMLElement, ctx: any) => {
-      console.log("[PlayerStat] ✓ Post-processor called!");
+    this.registerMarkdownPostProcessor((el: HTMLElement, ctx: any) => {
+      console.log("[PlayerStat] ✓✓✓ POST-PROCESSOR CALLED ✓✓✓");
       console.log("  tagName:", el.tagName);
-      console.log("  classes:", el.className);
       console.log("  innerHTML:", el.innerHTML?.substring(0, 100));
-      console.log("  textContent:", el.textContent?.substring(0, 100));
       
       // Process element to replace variables
       this.replaceVariablesInElement(el);
     });
     console.log("[PlayerStat] ✓ Post-processor registered successfully");
+    
+    // ALSO try to scan existing markdown immediately (in case it's already rendered)
+    console.log("[PlayerStat] Attempting initial scan of existing markdown...");
+    setTimeout(() => {
+      this.scanAndReplaceVariables();
+    }, 500);
 
     // Also scan on a delay for any updates
     this.registerInterval(
       window.setInterval(() => {
         this.updateAllVariables();
-      }, 1000) // Update variable values every 1 second
+      }, 500) // Update variable values every 500ms
     );
   }
 
@@ -147,58 +150,182 @@ export default class PlayerStatCounterPlugin extends Plugin {
     console.log(`[PlayerStat] Replace variables in element, tagName: ${element.tagName}`);
     console.log(`[PlayerStat] Element content: "${element.textContent?.substring(0, 100)}"`);
     
-    // Find all text nodes and replace variables
+    // Get all text content and look for variable patterns
+    const fullText = element.textContent || "";
+    const variableMatches = fullText.match(/<<[\w_]+>>/g) || [];
+    
+    console.log(`[PlayerStat] Full text analysis found ${variableMatches.length} potential variables: ${variableMatches.join(", ")}`);
+    
+    // Process each potential variable by searching the DOM
+    variableMatches.forEach((varRef) => {
+      const key = varRef.slice(2, -2); // Remove << and >>
+      console.log(`[PlayerStat] Attempting to replace variable: ${varRef} (key: ${key})`);
+      this.findAndReplaceVariable(element, varRef, key);
+    });
+  }
+
+  private findAndReplaceVariable(container: HTMLElement, varRef: string, key: string) {
     const walker = document.createTreeWalker(
-      element,
+      container,
       NodeFilter.SHOW_TEXT,
       null,
       false
     );
 
-    const nodesToProcess: Node[] = [];
     let node: Node | null;
-    let totalTextFound = "";
+    const nodesToProcess: Array<{node: Node, varRef: string, key: string}> = [];
 
+    // First, collect all nodes that might contain the variable (fragmented or whole)
     while ((node = walker.nextNode())) {
-      totalTextFound += `"${node.textContent}" `;
-      
-      // Skip nodes that are already inside variable links
       const parent = node.parentElement;
+      
+      // Skip if already processed
       if (parent?.classList.contains("player-stat-variable")) {
-        console.log(`[PlayerStat] Skipping already-processed node: "${node.textContent}"`);
         continue;
       }
       
-      if (node.textContent?.includes("<<")) {
-        console.log(`[PlayerStat] ✓ Found variable in text node: "${node.textContent}"`);
-        nodesToProcess.push(node);
+      // Check if this node or nearby nodes contain the variable
+      const text = node.textContent || "";
+      if (text.includes("<") || text === key || text.includes(">")) {
+        nodesToProcess.push({node, varRef, key});
       }
     }
+
+    // If we found nodes, try to reconstruct and replace the variable
+    if (nodesToProcess.length > 0) {
+      console.log(`[PlayerStat] Found ${nodesToProcess.length} nodes that might be part of variable ${varRef}`);
+      
+      // Try the simple case first: look for the whole variable in a single node
+      const wholeMatch = nodesToProcess.find(({node}) => 
+        (node.textContent || "").includes(varRef)
+      );
+      
+      if (wholeMatch) {
+        console.log(`[PlayerStat] Found whole variable in single node: ${varRef}`);
+        this.replaceVariablesInNode(wholeMatch.node);
+      } else {
+        // Variable is fragmented - need to reconstruct it
+        console.log(`[PlayerStat] Variable ${varRef} is fragmented across multiple nodes, attempting reconstruction...`);
+        this.reconstructAndReplaceFragmentedVariable(container, varRef, key);
+      }
+    }
+  }
+
+  private reconstructAndReplaceFragmentedVariable(container: HTMLElement, varRef: string, key: string) {
+    console.log(`[PlayerStat] Attempting to reconstruct fragmented variable: ${varRef}`);
     
-    console.log(`[PlayerStat] All text nodes: ${totalTextFound}`);
-    console.log(`[PlayerStat] Nodes to process: ${nodesToProcess.length}`);
-    
-    if (nodesToProcess.length === 0) {
-      console.log(`[PlayerStat] No variables found in this element`);
+    // Get the counter
+    const counter = this.counters.find((c) => c.key === key);
+    if (!counter) {
+      console.log(`[PlayerStat] Counter not found: ${key}`);
+      return;
     }
     
-    nodesToProcess.forEach((node, idx) => {
-      console.log(`[PlayerStat] Processing node ${idx}/${nodesToProcess.length}`);
-      this.replaceVariablesInNode(node);
+    console.log(`[PlayerStat] ✓ Found counter: ${key} = ${counter.value}`);
+    
+    // Create the replacement link
+    const link = document.createElement("a");
+    link.className = "player-stat-variable internal-link";
+    link.setAttribute("data-counter-key", key);
+    link.setAttribute("href", `#${key}`);
+    link.textContent = String(counter.value);
+
+    // Find the fragment nodes and replace them
+    // This is tricky - we look for nodes containing < followed by < and key and >
+    const walker = document.createTreeWalker(
+      container,
+      NodeFilter.SHOW_TEXT,
+      null,
+      false
+    );
+
+    const fragmentNodes: Node[] = [];
+    let node: Node | null;
+    let foundStart = false;
+
+    while ((node = walker.nextNode())) {
+      const text = node.textContent || "";
+      
+      if (!foundStart && text === "<<") {
+        foundStart = true;
+        fragmentNodes.push(node);
+      } else if (foundStart) {
+        fragmentNodes.push(node);
+        
+        // Check if this completes the variable
+        if (text === ">>") {
+          // Verify this is actually our variable by checking all fragments
+          const reconstructed = fragmentNodes.map(n => n.textContent).join("");
+          if (reconstructed === varRef) {
+            console.log(`[PlayerStat] ✓ Reconstructed variable from ${fragmentNodes.length} fragments`);
+            
+            // Replace all fragment nodes with the link (first node) and text nodes (rest as empty)
+            const parent = fragmentNodes[0].parentNode;
+            if (parent) {
+              parent.insertBefore(link, fragmentNodes[0]);
+              fragmentNodes.forEach(n => {
+                if (n.parentNode) {
+                  n.parentNode.removeChild(n);
+                }
+              });
+              this.attachLinkListeners(link);
+              return;
+            }
+          }
+          
+          foundStart = false;
+          fragmentNodes.length = 0;
+        }
+      }
+    }
+  }
+
+  private scanAndReplaceVariables() {
+    console.log("[PlayerStat] Scanning DOM for markdown containers...");
+    
+    // Find all markdown preview elements
+    const previews = document.querySelectorAll(".markdown-preview-view, .markdown-rendered, .cm-content");
+    console.log(`[PlayerStat] Found ${previews.length} potential markdown containers`);
+    
+    previews.forEach((preview, idx) => {
+      console.log(`[PlayerStat] Scanning container ${idx}...`);
+      const text = (preview as HTMLElement).textContent || "";
+      console.log(`[PlayerStat] Container ${idx} text preview: "${text.substring(0, 150)}"`);
+      
+      // Look for unreplaced variables
+      const unreplacedVars = text.match(/<<[\w_]+>>/g);
+      if (unreplacedVars) {
+        console.log(`[PlayerStat] Found unreplaced variables in container ${idx}: ${unreplacedVars.join(", ")}`);
+      }
+      
+      this.replaceVariablesInElement(preview as HTMLElement);
     });
   }
 
   private updateAllVariables() {
     // Find all elements with player-stat-variable class and update their values
     const variableLinks = document.querySelectorAll(".player-stat-variable");
-    variableLinks.forEach((link: Element) => {
+    
+    if (variableLinks.length > 0) {
+      console.log(`[PlayerStat] updateAllVariables: Found ${variableLinks.length} variable links`);
+    }
+    
+    variableLinks.forEach((link: Element, idx: number) => {
       const counterKey = link.getAttribute("data-counter-key");
-      if (!counterKey) return;
+      if (!counterKey) {
+        console.log(`[PlayerStat] Link ${idx}: No data-counter-key attribute`);
+        return;
+      }
 
       const counter = this.counters.find((c) => c.key === counterKey);
+      const currentText = link.textContent || "";
+      const expectedValue = counter ? String(counter.value) : "NOT FOUND";
+      
       if (counter && link.textContent !== String(counter.value)) {
-        // Update the link text content with new value
+        console.log(`[PlayerStat] Updating link ${idx}: "${currentText}" -> "${counter.value}"`);
         link.textContent = String(counter.value);
+      } else if (!counter) {
+        console.log(`[PlayerStat] Link ${idx}: Counter "${counterKey}" not found. Current text: "${currentText}"`);
       }
     });
   }

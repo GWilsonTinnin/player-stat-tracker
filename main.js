@@ -804,45 +804,107 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
       this.registerInterval(
         window.setInterval(() => {
           this.updateAllVariables();
-        }, 1e3)
-        // Update variable values every 1 second
+        }, 500)
+        // Update variable values every 500ms
       );
     });
   }
   replaceVariablesInElement(element) {
-    var _a, _b;
+    var _a;
     console.log(`[PlayerStat] Replace variables in element, tagName: ${element.tagName}`);
     console.log(`[PlayerStat] Element content: "${(_a = element.textContent) == null ? void 0 : _a.substring(0, 100)}"`);
+    const fullText = element.textContent || "";
+    const variableMatches = fullText.match(/<<[\w_]+>>/g) || [];
+    console.log(`[PlayerStat] Full text analysis found ${variableMatches.length} potential variables: ${variableMatches.join(", ")}`);
+    variableMatches.forEach((varRef) => {
+      const key = varRef.slice(2, -2);
+      console.log(`[PlayerStat] Attempting to replace variable: ${varRef} (key: ${key})`);
+      this.findAndReplaceVariable(element, varRef, key);
+    });
+  }
+  findAndReplaceVariable(container, varRef, key) {
     const walker = document.createTreeWalker(
-      element,
+      container,
       NodeFilter.SHOW_TEXT,
       null,
       false
     );
-    const nodesToProcess = [];
     let node;
-    let totalTextFound = "";
+    const nodesToProcess = [];
     while (node = walker.nextNode()) {
-      totalTextFound += `"${node.textContent}" `;
       const parent = node.parentElement;
       if (parent == null ? void 0 : parent.classList.contains("player-stat-variable")) {
-        console.log(`[PlayerStat] Skipping already-processed node: "${node.textContent}"`);
         continue;
       }
-      if ((_b = node.textContent) == null ? void 0 : _b.includes("<<")) {
-        console.log(`[PlayerStat] \u2713 Found variable in text node: "${node.textContent}"`);
-        nodesToProcess.push(node);
+      const text = node.textContent || "";
+      if (text.includes("<") || text === key || text.includes(">")) {
+        nodesToProcess.push({ node, varRef, key });
       }
     }
-    console.log(`[PlayerStat] All text nodes: ${totalTextFound}`);
-    console.log(`[PlayerStat] Nodes to process: ${nodesToProcess.length}`);
-    if (nodesToProcess.length === 0) {
-      console.log(`[PlayerStat] No variables found in this element`);
+    if (nodesToProcess.length > 0) {
+      console.log(`[PlayerStat] Found ${nodesToProcess.length} nodes that might be part of variable ${varRef}`);
+      const wholeMatch = nodesToProcess.find(
+        ({ node: node2 }) => (node2.textContent || "").includes(varRef)
+      );
+      if (wholeMatch) {
+        console.log(`[PlayerStat] Found whole variable in single node: ${varRef}`);
+        this.replaceVariablesInNode(wholeMatch.node);
+      } else {
+        console.log(`[PlayerStat] Variable ${varRef} is fragmented across multiple nodes, attempting reconstruction...`);
+        this.reconstructAndReplaceFragmentedVariable(container, varRef, key);
+      }
     }
-    nodesToProcess.forEach((node2, idx) => {
-      console.log(`[PlayerStat] Processing node ${idx}/${nodesToProcess.length}`);
-      this.replaceVariablesInNode(node2);
-    });
+  }
+  reconstructAndReplaceFragmentedVariable(container, varRef, key) {
+    console.log(`[PlayerStat] Attempting to reconstruct fragmented variable: ${varRef}`);
+    const counter = this.counters.find((c) => c.key === key);
+    if (!counter) {
+      console.log(`[PlayerStat] Counter not found: ${key}`);
+      return;
+    }
+    console.log(`[PlayerStat] \u2713 Found counter: ${key} = ${counter.value}`);
+    const link = document.createElement("a");
+    link.className = "player-stat-variable internal-link";
+    link.setAttribute("data-counter-key", key);
+    link.setAttribute("href", `#${key}`);
+    link.textContent = String(counter.value);
+    const walker = document.createTreeWalker(
+      container,
+      NodeFilter.SHOW_TEXT,
+      null,
+      false
+    );
+    const fragmentNodes = [];
+    let node;
+    let foundStart = false;
+    while (node = walker.nextNode()) {
+      const text = node.textContent || "";
+      if (!foundStart && text === "<<") {
+        foundStart = true;
+        fragmentNodes.push(node);
+      } else if (foundStart) {
+        fragmentNodes.push(node);
+        if (text === ">>") {
+          const reconstructed = fragmentNodes.map((n) => n.textContent).join("");
+          if (reconstructed === varRef) {
+            console.log(`[PlayerStat] \u2713 Reconstructed variable from ${fragmentNodes.length} fragments`);
+            const parent = fragmentNodes[0].parentNode;
+            if (parent) {
+              parent.insertBefore(link, fragmentNodes[0]);
+              fragmentNodes.forEach((n) => {
+                if (n.parentNode) {
+                  n.parentNode.removeChild(n);
+                }
+              });
+              this.attachLinkListeners(link);
+              return;
+            }
+          }
+          foundStart = false;
+          fragmentNodes.length = 0;
+        }
+      }
+    }
   }
   scanAndReplaceVariables() {
     console.log("[PlayerStat] Scanning DOM for markdown containers...");
@@ -850,17 +912,34 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
     console.log(`[PlayerStat] Found ${previews.length} potential markdown containers`);
     previews.forEach((preview, idx) => {
       console.log(`[PlayerStat] Scanning container ${idx}...`);
+      const text = preview.textContent || "";
+      console.log(`[PlayerStat] Container ${idx} text preview: "${text.substring(0, 150)}"`);
+      const unreplacedVars = text.match(/<<[\w_]+>>/g);
+      if (unreplacedVars) {
+        console.log(`[PlayerStat] Found unreplaced variables in container ${idx}: ${unreplacedVars.join(", ")}`);
+      }
       this.replaceVariablesInElement(preview);
     });
   }
   updateAllVariables() {
     const variableLinks = document.querySelectorAll(".player-stat-variable");
-    variableLinks.forEach((link) => {
+    if (variableLinks.length > 0) {
+      console.log(`[PlayerStat] updateAllVariables: Found ${variableLinks.length} variable links`);
+    }
+    variableLinks.forEach((link, idx) => {
       const counterKey = link.getAttribute("data-counter-key");
-      if (!counterKey) return;
+      if (!counterKey) {
+        console.log(`[PlayerStat] Link ${idx}: No data-counter-key attribute`);
+        return;
+      }
       const counter = this.counters.find((c) => c.key === counterKey);
+      const currentText = link.textContent || "";
+      const expectedValue = counter ? String(counter.value) : "NOT FOUND";
       if (counter && link.textContent !== String(counter.value)) {
+        console.log(`[PlayerStat] Updating link ${idx}: "${currentText}" -> "${counter.value}"`);
         link.textContent = String(counter.value);
+      } else if (!counter) {
+        console.log(`[PlayerStat] Link ${idx}: Counter "${counterKey}" not found. Current text: "${currentText}"`);
       }
     });
   }
