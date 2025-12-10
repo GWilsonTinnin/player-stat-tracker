@@ -678,24 +678,46 @@ var PlayerStatSettingTab = class extends import_obsidian2.PluginSettingTab {
 var import_view = __toModule(require("@codemirror/view"));
 var import_state = __toModule(require("@codemirror/state"));
 var VariableWidget = class extends import_view.WidgetType {
-  constructor(value, key) {
+  constructor(value, key, plugin) {
     super();
     this.value = value;
     this.key = key;
+    this.plugin = plugin;
   }
   eq(other) {
     return other instanceof VariableWidget && other.value === this.value && other.key === this.key;
   }
   toDOM() {
-    const link = document.createElement("a");
-    link.className = "player-stat-variable-link internal-link";
+    const link = document.createElement("span");
+    link.className = "player-stat-variable-link";
     link.setAttribute("data-counter-key", this.key);
-    link.setAttribute("data-href", this.key);
-    link.setAttribute("href", `#${this.key}`);
     link.textContent = this.value;
     link.style.cursor = "pointer";
     link.style.color = "var(--text-accent)";
-    link.style.textDecoration = "underline";
+    link.style.textDecoration = "none";
+    link.style.fontWeight = "600";
+    link.addEventListener("click", (e) => __async(this, null, function* () {
+      e.preventDefault();
+      e.stopPropagation();
+      yield this.plugin.activateView();
+    }));
+    let hoverTimeout = null;
+    let popup = null;
+    link.addEventListener("mouseenter", () => {
+      hoverTimeout = window.setTimeout(() => {
+        popup = this.plugin.showCounterPopup(this.key, link);
+      }, 300);
+    });
+    link.addEventListener("mouseleave", () => {
+      if (hoverTimeout) {
+        clearTimeout(hoverTimeout);
+        hoverTimeout = null;
+      }
+      if (popup) {
+        popup.remove();
+        popup = null;
+      }
+    });
     return link;
   }
   ignoreEvent() {
@@ -729,7 +751,7 @@ var PlayerStatViewPlugin = class {
           const matchEnd = matchStart + match[0].length;
           console.log(`[PlayerStatCM6] Found variable {{${key}}} at ${matchStart}-${matchEnd}, value: ${counter.value}`);
           const deco = import_view.Decoration.replace({
-            widget: new VariableWidget(String(counter.value), key),
+            widget: new VariableWidget(String(counter.value), key, this.plugin),
             side: -1
           });
           builder.add(matchStart, matchEnd, deco);
@@ -915,11 +937,9 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
       return;
     }
     console.log(`[PlayerStat] \u2713 Found counter: ${key} = ${counter.value}`);
-    const link = document.createElement("a");
-    link.className = "player-stat-variable-link internal-link";
+    const link = document.createElement("span");
+    link.className = "player-stat-variable-link";
     link.setAttribute("data-counter-key", key);
-    link.setAttribute("data-href", key);
-    link.setAttribute("href", `#${key}`);
     link.textContent = String(counter.value);
     this.styleVariableLink(link);
     const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
@@ -1050,11 +1070,9 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
       const counter = this.counters.find((c) => c.key === counterKey);
       if (counter !== void 0) {
         console.log(`[PlayerStat] \u2713 Found counter: ${counterKey} = ${counter.value}`);
-        const link = document.createElement("a");
-        link.className = "player-stat-variable-link internal-link";
+        const link = document.createElement("span");
+        link.className = "player-stat-variable-link";
         link.setAttribute("data-counter-key", counterKey);
-        link.setAttribute("data-href", counterKey);
-        link.setAttribute("href", `#${counterKey}`);
         link.textContent = String(counter.value);
         this.styleVariableLink(link);
         fragment.appendChild(link);
@@ -1087,12 +1105,34 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
   }
   attachLinkListeners(link) {
     this.styleVariableLink(link);
-    link.addEventListener("click", (e) => {
+    link.addEventListener("click", (e) => __async(this, null, function* () {
       e.preventDefault();
       e.stopPropagation();
       const counterKey = link.getAttribute("data-counter-key");
-      this.activateView();
+      if (!counterKey)
+        return;
       console.log(`[PlayerStat] Clicked counter variable: ${counterKey}`);
+      yield this.activateView();
+    }));
+    let hoverTimeout = null;
+    let popup = null;
+    link.addEventListener("mouseenter", (e) => {
+      const counterKey = link.getAttribute("data-counter-key");
+      if (!counterKey)
+        return;
+      hoverTimeout = window.setTimeout(() => {
+        popup = this.showCounterPopup(counterKey, link);
+      }, 300);
+    });
+    link.addEventListener("mouseleave", () => {
+      if (hoverTimeout) {
+        clearTimeout(hoverTimeout);
+        hoverTimeout = null;
+      }
+      if (popup) {
+        popup.remove();
+        popup = null;
+      }
     });
     console.log(`[PlayerStat] Attached listeners to variable link: ${link.getAttribute("data-counter-key")}`);
   }
@@ -1123,12 +1163,123 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
     const counter = this.counters.find((c) => c.key === key);
     return counter ? counter.value : null;
   }
+  createOrNavigateToCounterDocument(counterKey) {
+    return __async(this, null, function* () {
+      const fileName = `Counter-${counterKey.charAt(0).toUpperCase() + counterKey.slice(1).replace(/_/g, "-")}.md`;
+      const file = this.app.vault.getAbstractFileByPath(fileName);
+      if (file) {
+        const leaf = this.app.workspace.getLeaf(false);
+        yield leaf.openFile(file);
+        console.log(`[PlayerStat] Navigated to existing counter document: ${fileName}`);
+      } else {
+        const counter = this.counters.find((c) => c.key === counterKey);
+        if (!counter) {
+          console.log(`[PlayerStat] Counter not found: ${counterKey}`);
+          return;
+        }
+        const content = `# ${counterKey.charAt(0).toUpperCase() + counterKey.slice(1).replace(/_/g, " ")}
+
+Current Value: {{${counterKey}}}
+
+## Log
+${counter.log || "No log entries yet."}
+
+## History
+${counter.history.map((h) => `- ${new Date(h.timestamp).toLocaleString()}: ${h.value}`).join("\n")}
+`;
+        const newFile = yield this.app.vault.create(fileName, content);
+        const leaf = this.app.workspace.getLeaf(false);
+        yield leaf.openFile(newFile);
+        console.log(`[PlayerStat] Created new counter document: ${fileName}`);
+      }
+    });
+  }
+  showCounterPopup(counterKey, anchorElement) {
+    const counter = this.counters.find((c) => c.key === counterKey);
+    if (!counter) {
+      console.log(`[PlayerStat] Counter not found for popup: ${counterKey}`);
+      const emptyPopup = document.createElement("div");
+      return emptyPopup;
+    }
+    const popup = document.createElement("div");
+    popup.className = "player-stat-popup";
+    popup.style.position = "fixed";
+    popup.style.backgroundColor = "var(--background-primary)";
+    popup.style.border = "1px solid var(--divider-color)";
+    popup.style.borderRadius = "8px";
+    popup.style.padding = "16px";
+    popup.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
+    popup.style.zIndex = "1000";
+    popup.style.minWidth = "250px";
+    popup.style.maxWidth = "350px";
+    const rect = anchorElement.getBoundingClientRect();
+    popup.style.left = `${rect.left}px`;
+    popup.style.top = `${rect.bottom + 5}px`;
+    const nameDiv = popup.createDiv();
+    nameDiv.style.fontWeight = "bold";
+    nameDiv.style.fontSize = "16px";
+    nameDiv.style.marginBottom = "8px";
+    nameDiv.style.color = "var(--text-normal)";
+    nameDiv.textContent = counter.key.charAt(0).toUpperCase() + counter.key.slice(1).replace(/_/g, " ");
+    const valueDiv = popup.createDiv();
+    valueDiv.style.fontSize = "24px";
+    valueDiv.style.fontWeight = "bold";
+    valueDiv.style.marginBottom = "12px";
+    valueDiv.style.color = "var(--text-accent)";
+    valueDiv.textContent = `Value: ${counter.value}`;
+    if (counter.log) {
+      const logDiv = popup.createDiv();
+      logDiv.style.fontSize = "12px";
+      logDiv.style.color = "var(--text-muted)";
+      logDiv.style.fontStyle = "italic";
+      logDiv.style.marginBottom = "8px";
+      logDiv.style.maxHeight = "60px";
+      logDiv.style.overflowY = "auto";
+      const entries = counter.log.split("-").map((e) => e.trim()).filter((e) => e);
+      if (entries.length > 0) {
+        const latestContent = entries[entries.length - 1];
+        logDiv.textContent = `Latest: ${latestContent}`;
+      }
+    }
+    if (counter.history && counter.history.length > 0) {
+      const historyDiv = popup.createDiv();
+      historyDiv.style.fontSize = "11px";
+      historyDiv.style.color = "var(--text-muted)";
+      historyDiv.style.marginTop = "8px";
+      historyDiv.style.paddingTop = "8px";
+      historyDiv.style.borderTop = "1px solid var(--divider-color)";
+      const historyTitle = historyDiv.createDiv();
+      historyTitle.style.fontWeight = "bold";
+      historyTitle.style.marginBottom = "4px";
+      historyTitle.textContent = "Recent History:";
+      const recentEntries = counter.history.slice(-3).reverse();
+      recentEntries.forEach((entry) => {
+        const entryDiv = historyDiv.createDiv();
+        entryDiv.style.marginLeft = "8px";
+        entryDiv.textContent = `${new Date(entry.timestamp).toLocaleString()}: ${entry.value}`;
+      });
+    }
+    document.body.appendChild(popup);
+    const removePopup = (e) => {
+      if (!popup.contains(e.target) && e.target !== anchorElement) {
+        popup.remove();
+        document.removeEventListener("click", removePopup);
+      }
+    };
+    setTimeout(() => {
+      document.addEventListener("click", removePopup);
+    }, 100);
+    return popup;
+  }
   activateView() {
     return __async(this, null, function* () {
-      this.app.workspace.getRightLeaf(false).setViewState({
-        type: VIEW_TYPE_PLAYER_STAT,
-        active: true
-      });
+      const rightLeaf = this.app.workspace.getRightLeaf(false);
+      if (rightLeaf) {
+        yield rightLeaf.setViewState({
+          type: VIEW_TYPE_PLAYER_STAT,
+          active: true
+        });
+      }
     });
   }
   saveCounters() {

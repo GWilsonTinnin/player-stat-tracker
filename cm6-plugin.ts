@@ -9,7 +9,7 @@ import type PlayerStatCounterPlugin from "./main";
  */
 
 class VariableWidget extends WidgetType {
-  constructor(readonly value: string, readonly key: string) {
+  constructor(readonly value: string, readonly key: string, readonly plugin: PlayerStatCounterPlugin) {
     super();
   }
 
@@ -18,15 +18,44 @@ class VariableWidget extends WidgetType {
   }
 
   toDOM() {
-    const link = document.createElement("a");
-    link.className = "player-stat-variable-link internal-link";
+    const link = document.createElement("span");
+    link.className = "player-stat-variable-link";
     link.setAttribute("data-counter-key", this.key);
-    link.setAttribute("data-href", this.key);
-    link.setAttribute("href", `#${this.key}`);
     link.textContent = this.value;
     link.style.cursor = "pointer";
     link.style.color = "var(--text-accent)";
-    link.style.textDecoration = "underline";
+    link.style.textDecoration = "none";
+    link.style.fontWeight = "600";
+    
+    // Add click handler to show counter details in sidebar
+    link.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Open the plugin's sidebar view to show counter details
+      await (this.plugin as any).activateView();
+    });
+    
+    // Add hover handler to show popup
+    let hoverTimeout: number | null = null;
+    let popup: HTMLElement | null = null;
+    
+    link.addEventListener("mouseenter", () => {
+      hoverTimeout = window.setTimeout(() => {
+        popup = (this.plugin as any).showCounterPopup(this.key, link);
+      }, 300);
+    });
+    
+    link.addEventListener("mouseleave", () => {
+      if (hoverTimeout) {
+        clearTimeout(hoverTimeout);
+        hoverTimeout = null;
+      }
+      if (popup) {
+        popup.remove();
+        popup = null;
+      }
+    });
+    
     return link;
   }
 
@@ -72,7 +101,7 @@ export class PlayerStatViewPlugin implements PluginValue {
           console.log(`[PlayerStatCM6] Found variable {{${key}}} at ${matchStart}-${matchEnd}, value: ${counter.value}`);
 
           const deco = Decoration.replace({
-            widget: new VariableWidget(String(counter.value), key),
+            widget: new VariableWidget(String(counter.value), key, this.plugin),
             side: -1,
           });
 

@@ -254,12 +254,10 @@ export default class PlayerStatCounterPlugin extends Plugin {
     
     console.log(`[PlayerStat] ✓ Found counter: ${key} = ${counter.value}`);
     
-    // Create the replacement link as an anchor element following Obsidian format
-    const link = document.createElement("a");
-    link.className = "player-stat-variable-link internal-link";
+    // Create the replacement link as a span element to avoid Obsidian's internal link behavior
+    const link = document.createElement("span");
+    link.className = "player-stat-variable-link";
     link.setAttribute("data-counter-key", key);
-    link.setAttribute("data-href", key); // Obsidian's standard internal link attribute
-    link.setAttribute("href", `#${key}`); // Alternative href for fallback
     link.textContent = String(counter.value);
     
     // Apply styles immediately
@@ -454,12 +452,10 @@ export default class PlayerStatCounterPlugin extends Plugin {
       if (counter !== undefined) {
         console.log(`[PlayerStat] ✓ Found counter: ${counterKey} = ${counter.value}`);
         
-        // Create an anchor element that acts as an internal link following Obsidian format
-        const link = document.createElement("a");
-        link.className = "player-stat-variable-link internal-link";
+        // Create a span element to display counter value (not a link to avoid Obsidian's hover preview)
+        const link = document.createElement("span");
+        link.className = "player-stat-variable-link";
         link.setAttribute("data-counter-key", counterKey);
-        link.setAttribute("data-href", counterKey); // Obsidian's standard internal link attribute
-        link.setAttribute("href", `#${counterKey}`); // Alternative href for fallback
         link.textContent = String(counter.value);
         
         // Apply styles immediately
@@ -510,14 +506,43 @@ export default class PlayerStatCounterPlugin extends Plugin {
     // Apply inline styles (may already be applied, but ensure they are)
     this.styleVariableLink(link);
     
-    // Add click handler
-    link.addEventListener("click", (e) => {
+    // Add click handler to open plugin sidebar
+    link.addEventListener("click", async (e) => {
       e.preventDefault();
       e.stopPropagation();
       const counterKey = link.getAttribute("data-counter-key");
-      // Open the player stat counter view
-      this.activateView();
+      if (!counterKey) return;
+      
       console.log(`[PlayerStat] Clicked counter variable: ${counterKey}`);
+      // Open the plugin's sidebar to show all counters
+      await this.activateView();
+    });
+    
+    // Add hover handler to show popup
+    let hoverTimeout: number | null = null;
+    let popup: HTMLElement | null = null;
+    
+    link.addEventListener("mouseenter", (e) => {
+      const counterKey = link.getAttribute("data-counter-key");
+      if (!counterKey) return;
+      
+      // Show popup after a brief delay
+      hoverTimeout = window.setTimeout(() => {
+        popup = this.showCounterPopup(counterKey, link);
+      }, 300); // 300ms delay before showing popup
+    });
+    
+    link.addEventListener("mouseleave", () => {
+      // Cancel popup if mouse leaves before delay
+      if (hoverTimeout) {
+        clearTimeout(hoverTimeout);
+        hoverTimeout = null;
+      }
+      // Remove popup if it exists
+      if (popup) {
+        popup.remove();
+        popup = null;
+      }
     });
     
     console.log(`[PlayerStat] Attached listeners to variable link: ${link.getAttribute("data-counter-key")}`);
@@ -560,11 +585,156 @@ export default class PlayerStatCounterPlugin extends Plugin {
     return counter ? counter.value : null;
   }
 
+  private async createOrNavigateToCounterDocument(counterKey: string) {
+    // Create a filename based on the counter key
+    const fileName = `Counter-${counterKey.charAt(0).toUpperCase() + counterKey.slice(1).replace(/_/g, "-")}.md`;
+    
+    // Check if the file already exists
+    const file = this.app.vault.getAbstractFileByPath(fileName);
+    
+    if (file) {
+      // File exists, navigate to it
+      const leaf = this.app.workspace.getLeaf(false);
+      await leaf.openFile(file as any);
+      console.log(`[PlayerStat] Navigated to existing counter document: ${fileName}`);
+    } else {
+      // File doesn't exist, create it
+      const counter = this.counters.find((c) => c.key === counterKey);
+      if (!counter) {
+        console.log(`[PlayerStat] Counter not found: ${counterKey}`);
+        return;
+      }
+      
+      // Create document content
+      const content = `# ${counterKey.charAt(0).toUpperCase() + counterKey.slice(1).replace(/_/g, " ")}
+
+Current Value: {{${counterKey}}}
+
+## Log
+${counter.log || "No log entries yet."}
+
+## History
+${counter.history.map((h) => `- ${new Date(h.timestamp).toLocaleString()}: ${h.value}`).join("\n")}
+`;
+      
+      // Create the file
+      const newFile = await this.app.vault.create(fileName, content);
+      
+      // Open it
+      const leaf = this.app.workspace.getLeaf(false);
+      await leaf.openFile(newFile);
+      console.log(`[PlayerStat] Created new counter document: ${fileName}`);
+    }
+  }
+
+  private showCounterPopup(counterKey: string, anchorElement: HTMLElement): HTMLElement {
+    const counter = this.counters.find((c) => c.key === counterKey);
+    if (!counter) {
+      console.log(`[PlayerStat] Counter not found for popup: ${counterKey}`);
+      const emptyPopup = document.createElement("div");
+      return emptyPopup;
+    }
+    
+    // Create popup container
+    const popup = document.createElement("div");
+    popup.className = "player-stat-popup";
+    popup.style.position = "fixed";
+    popup.style.backgroundColor = "var(--background-primary)";
+    popup.style.border = "1px solid var(--divider-color)";
+    popup.style.borderRadius = "8px";
+    popup.style.padding = "16px";
+    popup.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
+    popup.style.zIndex = "1000";
+    popup.style.minWidth = "250px";
+    popup.style.maxWidth = "350px";
+    
+    // Position popup near the anchor element
+    const rect = anchorElement.getBoundingClientRect();
+    popup.style.left = `${rect.left}px`;
+    popup.style.top = `${rect.bottom + 5}px`;
+    
+    // Counter name
+    const nameDiv = popup.createDiv();
+    nameDiv.style.fontWeight = "bold";
+    nameDiv.style.fontSize = "16px";
+    nameDiv.style.marginBottom = "8px";
+    nameDiv.style.color = "var(--text-normal)";
+    nameDiv.textContent = counter.key.charAt(0).toUpperCase() + counter.key.slice(1).replace(/_/g, " ");
+    
+    // Current value
+    const valueDiv = popup.createDiv();
+    valueDiv.style.fontSize = "24px";
+    valueDiv.style.fontWeight = "bold";
+    valueDiv.style.marginBottom = "12px";
+    valueDiv.style.color = "var(--text-accent)";
+    valueDiv.textContent = `Value: ${counter.value}`;
+    
+    // Latest log entry
+    if (counter.log) {
+      const logDiv = popup.createDiv();
+      logDiv.style.fontSize = "12px";
+      logDiv.style.color = "var(--text-muted)";
+      logDiv.style.fontStyle = "italic";
+      logDiv.style.marginBottom = "8px";
+      logDiv.style.maxHeight = "60px";
+      logDiv.style.overflowY = "auto";
+      
+      const entries = counter.log.split("-").map(e => e.trim()).filter(e => e);
+      if (entries.length > 0) {
+        const latestContent = entries[entries.length - 1];
+        logDiv.textContent = `Latest: ${latestContent}`;
+      }
+    }
+    
+    // Recent history
+    if (counter.history && counter.history.length > 0) {
+      const historyDiv = popup.createDiv();
+      historyDiv.style.fontSize = "11px";
+      historyDiv.style.color = "var(--text-muted)";
+      historyDiv.style.marginTop = "8px";
+      historyDiv.style.paddingTop = "8px";
+      historyDiv.style.borderTop = "1px solid var(--divider-color)";
+      
+      const historyTitle = historyDiv.createDiv();
+      historyTitle.style.fontWeight = "bold";
+      historyTitle.style.marginBottom = "4px";
+      historyTitle.textContent = "Recent History:";
+      
+      const recentEntries = counter.history.slice(-3).reverse();
+      recentEntries.forEach((entry) => {
+        const entryDiv = historyDiv.createDiv();
+        entryDiv.style.marginLeft = "8px";
+        entryDiv.textContent = `${new Date(entry.timestamp).toLocaleString()}: ${entry.value}`;
+      });
+    }
+    
+    // Add to document
+    document.body.appendChild(popup);
+    
+    // Remove popup when clicking outside
+    const removePopup = (e: MouseEvent) => {
+      if (!popup.contains(e.target as Node) && e.target !== anchorElement) {
+        popup.remove();
+        document.removeEventListener("click", removePopup);
+      }
+    };
+    
+    // Add click listener after a brief delay to prevent immediate removal
+    setTimeout(() => {
+      document.addEventListener("click", removePopup);
+    }, 100);
+    
+    return popup;
+  }
+
   async activateView() {
-    this.app.workspace.getRightLeaf(false).setViewState({
-      type: VIEW_TYPE_PLAYER_STAT,
-      active: true,
-    });
+    const rightLeaf = this.app.workspace.getRightLeaf(false);
+    if (rightLeaf) {
+      await rightLeaf.setViewState({
+        type: VIEW_TYPE_PLAYER_STAT,
+        active: true,
+      });
+    }
   }
 
   async saveCounters() {
