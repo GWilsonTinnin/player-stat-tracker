@@ -1,77 +1,49 @@
-/* Player Stat Tracker - Variable Link Styling */
+/* Player Stat Tracker Plugin Styles */
 
-/* Main variable link styling - using high specificity selectors */
-.markdown-reading-view .player-stat-variable,
-.markdown-preview-view .player-stat-variable,
-.markdown-rendered .player-stat-variable,
-.cm-content .player-stat-variable,
-a.player-stat-variable,
-.player-stat-variable {
-  font-weight: bold !important;
-  color: #0066cc !important;
-  cursor: pointer !important;
-  text-decoration: none !important;
-  border-bottom: 1px solid #0066cc !important;
-  padding: 0 2px !important;
-  border-radius: 2px !important;
-  transition: all 0.15s ease !important;
-  display: inline-block !important;
-  background-color: transparent !important;
-  pointer-events: auto !important;
+/* Counter variable links - works in both Reading and Live Preview modes */
+.player-stat-variable-link {
+  color: var(--text-accent);
+  text-decoration: underline;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0 2px;
+  border-radius: 2px;
 }
 
-/* Hover state - light blue background */
-.markdown-reading-view .player-stat-variable:hover,
-.markdown-preview-view .player-stat-variable:hover,
-.markdown-rendered .player-stat-variable:hover,
-.cm-content .player-stat-variable:hover,
-a.player-stat-variable:hover,
-.player-stat-variable:hover {
-  background-color: rgba(0, 102, 204, 0.2) !important;
-  border-bottom-width: 2px !important;
-  padding-bottom: 1px !important;
-  box-shadow: 0 0 6px rgba(0, 102, 204, 0.3) !important;
-  color: #0055aa !important;
+.player-stat-variable-link:hover {
+  background-color: var(--text-accent-hover);
+  color: var(--text-on-accent);
 }
 
-/* Active/click state - darker blue background */
-.markdown-reading-view .player-stat-variable:active,
-.markdown-preview-view .player-stat-variable:active,
-.markdown-rendered .player-stat-variable:active,
-.cm-content .player-stat-variable:active,
-a.player-stat-variable:active,
-.player-stat-variable:active {
-  background-color: rgba(0, 102, 204, 0.3) !important;
-  border-bottom-width: 2px !important;
+/* Optional: Add a subtle icon to indicate it's clickable */
+.player-stat-variable-link::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 2px;
+  vertical-align: middle;
+  opacity: 0.6;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>');
+  background-size: contain;
+  background-repeat: no-repeat;
 }
 
-/* Dark mode support */
-body.theme-dark .markdown-reading-view .player-stat-variable,
-body.theme-dark .markdown-preview-view .player-stat-variable,
-body.theme-dark .markdown-rendered .player-stat-variable,
-body.theme-dark .cm-content .player-stat-variable,
-body.theme-dark a.player-stat-variable,
-body.theme-dark .player-stat-variable {
-  color: #5c9cff !important;
-  border-bottom-color: #5c9cff !important;
+/* Live Preview specific styling */
+.cm-line .player-stat-variable-link {
+  font-weight: 500;
 }
 
-body.theme-dark .markdown-reading-view .player-stat-variable:hover,
-body.theme-dark .markdown-preview-view .player-stat-variable:hover,
-body.theme-dark .markdown-rendered .player-stat-variable:hover,
-body.theme-dark .cm-content .player-stat-variable:hover,
-body.theme-dark a.player-stat-variable:hover,
-body.theme-dark .player-stat-variable:hover {
-  background-color: rgba(92, 156, 255, 0.2) !important;
-  box-shadow: 0 0 6px rgba(92, 156, 255, 0.3) !important;
-  color: #7eb3ff !important;
+/* Reading mode specific styling */
+.markdown-preview-view .player-stat-variable-link {
+  font-weight: 500;
 }
 
-body.theme-dark .markdown-reading-view .player-stat-variable:active,
-body.theme-dark .markdown-preview-view .player-stat-variable:active,
-body.theme-dark .markdown-rendered .player-stat-variable:active,
-body.theme-dark .cm-content .player-stat-variable:active,
-body.theme-dark a.player-stat-variable:active,
-body.theme-dark .player-stat-variable:active {
-  background-color: rgba(92, 156, 255, 0.3) !important;
+/* Make sure the styling persists in different themes */
+body.theme-dark .player-stat-variable-link {
+  color: var(--text-accent);
+}
+
+body.theme-light .player-stat-variable-link {
+  color: var(--text-accent);
 }

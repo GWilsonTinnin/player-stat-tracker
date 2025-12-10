@@ -39,7 +39,7 @@ export default class PlayerStatCounterPlugin extends Plugin {
       this.counters = savedSettings.counters;
     }
 
-    // Add CSS styling for variable links
+    // Add CSS styling for variable links using Obsidian's style injection
     this.addPluginStyles();
 
     // Add settings tab
@@ -97,8 +97,8 @@ export default class PlayerStatCounterPlugin extends Plugin {
         }
         
         // Also check for any elements with specific classes
-        const varLinks = container.querySelectorAll(".player-stat-variable");
-        console.log(`Found ${varLinks.length} .player-stat-variable elements`);
+        const varLinks = container.querySelectorAll(".player-stat-variable-link");
+        console.log(`Found ${varLinks.length} .player-stat-variable-link elements`);
         varLinks.forEach((el, i) => {
           console.log(`  Link ${i}: key="${el.getAttribute("data-counter-key")}", text="${el.textContent}"`);
         });
@@ -111,7 +111,7 @@ export default class PlayerStatCounterPlugin extends Plugin {
       name: "Debug: Check Variable Links in DOM",
       callback: () => {
         console.log("=== DEBUG: Searching for variable links ===");
-        const links = document.querySelectorAll(".player-stat-variable");
+        const links = document.querySelectorAll(".player-stat-variable-link");
         console.log(`Found ${links.length} variable links in the DOM`);
         
         // Also search by the internal-link class to see if they're there
@@ -122,7 +122,7 @@ export default class PlayerStatCounterPlugin extends Plugin {
         const mdContainers = document.querySelectorAll(".markdown-reading-view, .markdown-preview-view");
         console.log(`Found ${mdContainers.length} markdown containers`);
         mdContainers.forEach((container, i) => {
-          const varLinksInContainer = container.querySelectorAll(".player-stat-variable");
+          const varLinksInContainer = container.querySelectorAll(".player-stat-variable-link");
           console.log(`  Container ${i}: ${varLinksInContainer.length} variable links`);
         });
         
@@ -205,7 +205,7 @@ export default class PlayerStatCounterPlugin extends Plugin {
       const parent = node.parentElement;
       
       // Skip if already processed
-      if (parent?.classList.contains("player-stat-variable")) {
+      if (parent?.classList.contains("player-stat-variable-link")) {
         continue;
       }
       
@@ -248,10 +248,12 @@ export default class PlayerStatCounterPlugin extends Plugin {
     
     console.log(`[PlayerStat] ✓ Found counter: ${key} = ${counter.value}`);
     
-    // Create the replacement link
-    const link = document.createElement("span");
-    link.className = "player-stat-variable";
+    // Create the replacement link as an anchor element following Obsidian format
+    const link = document.createElement("a");
+    link.className = "player-stat-variable-link internal-link";
     link.setAttribute("data-counter-key", key);
+    link.setAttribute("data-href", key); // Obsidian's standard internal link attribute
+    link.setAttribute("href", `#${key}`); // Alternative href for fallback
     link.textContent = String(counter.value);
     
     // Apply styles immediately
@@ -365,8 +367,8 @@ export default class PlayerStatCounterPlugin extends Plugin {
   }
 
   private updateAllVariables() {
-    // Find all elements with player-stat-variable class and update their values
-    const variableLinks = document.querySelectorAll(".player-stat-variable");
+    // Find all elements with player-stat-variable-link class and update their values
+    const variableLinks = document.querySelectorAll(".player-stat-variable-link");
     
     if (variableLinks.length > 0) {
       console.log(`[PlayerStat] updateAllVariables: Found ${variableLinks.length} variable links`);
@@ -427,10 +429,12 @@ export default class PlayerStatCounterPlugin extends Plugin {
       if (counter !== undefined) {
         console.log(`[PlayerStat] ✓ Found counter: ${counterKey} = ${counter.value}`);
         
-        // Create a styled span element
-        const link = document.createElement("span");
-        link.className = "player-stat-variable";
+        // Create an anchor element that acts as an internal link following Obsidian format
+        const link = document.createElement("a");
+        link.className = "player-stat-variable-link internal-link";
         link.setAttribute("data-counter-key", counterKey);
+        link.setAttribute("data-href", counterKey); // Obsidian's standard internal link attribute
+        link.setAttribute("href", `#${counterKey}`); // Alternative href for fallback
         link.textContent = String(counter.value);
         
         // Apply styles immediately
@@ -468,51 +472,13 @@ export default class PlayerStatCounterPlugin extends Plugin {
   }
 
   private styleVariableLink(link: HTMLElement) {
-    // Apply inline styles directly to ensure they work
-    link.style.fontWeight = "bold";
-    link.style.color = "#0066cc";
-    link.style.cursor = "pointer";
-    link.style.textDecoration = "none";
-    link.style.borderBottom = "1px solid #0066cc";
-    link.style.padding = "0 2px";
-    link.style.borderRadius = "2px";
-    link.style.transition = "all 0.15s ease";
-    link.style.display = "inline-block";
-    link.style.backgroundColor = "transparent";
-    
-    // Check if dark mode
-    const isDarkMode = document.body.classList.contains("theme-dark");
-    if (isDarkMode) {
-      link.style.color = "#5c9cff";
-      link.style.borderBottomColor = "#5c9cff";
+    // Don't apply inline styles - rely on CSS classes only
+    // Obsidian sanitizes inline styles, so we just ensure the class is set
+    if (!link.classList.contains("player-stat-variable-link")) {
+      link.classList.add("player-stat-variable-link");
     }
     
-    // Add hover effects via event listeners
-    link.addEventListener("mouseenter", () => {
-      if (document.body.classList.contains("theme-dark")) {
-        link.style.backgroundColor = "rgba(92, 156, 255, 0.2)";
-        link.style.boxShadow = "0 0 6px rgba(92, 156, 255, 0.3)";
-        link.style.color = "#7eb3ff";
-      } else {
-        link.style.backgroundColor = "rgba(0, 102, 204, 0.2)";
-        link.style.boxShadow = "0 0 6px rgba(0, 102, 204, 0.3)";
-        link.style.color = "#0055aa";
-      }
-      link.style.borderBottomWidth = "2px";
-      link.style.paddingBottom = "1px";
-    });
-    
-    link.addEventListener("mouseleave", () => {
-      link.style.backgroundColor = "transparent";
-      link.style.boxShadow = "none";
-      link.style.borderBottomWidth = "1px";
-      link.style.paddingBottom = "0";
-      if (document.body.classList.contains("theme-dark")) {
-        link.style.color = "#5c9cff";
-      } else {
-        link.style.color = "#0066cc";
-      }
-    });
+    console.log(`[PlayerStat] Styled element with class: ${link.className}`);
   }
 
   private attachLinkListeners(link: HTMLElement) {
@@ -599,110 +565,65 @@ export default class PlayerStatCounterPlugin extends Plugin {
   }
 
   private addPluginStyles() {
-    // Remove existing styles first to avoid duplicates
-    const existingStyle = document.getElementById("player-stat-tracker-styles");
-    if (existingStyle) {
-      existingStyle.remove();
-    }
-
+    // Use Obsidian's CSS injection for styling
     const css = `
-      /* Player Stat Tracker - Variable Link Styling */
+/* Player Stat Tracker Plugin Styles */
 
-      /* Main variable link styling - using high specificity selectors */
-      .markdown-reading-view .player-stat-variable,
-      .markdown-preview-view .player-stat-variable,
-      .markdown-rendered .player-stat-variable,
-      .cm-content .player-stat-variable,
-      a.player-stat-variable,
-      .player-stat-variable {
-        font-weight: bold !important;
-        color: #0066cc !important;
-        cursor: pointer !important;
-        text-decoration: none !important;
-        border-bottom: 1px solid #0066cc !important;
-        padding: 0 2px !important;
-        border-radius: 2px !important;
-        transition: all 0.15s ease !important;
-        display: inline-block !important;
-        background-color: transparent !important;
-        pointer-events: auto !important;
-      }
+/* Counter variable links - works in both Reading and Live Preview modes */
+.player-stat-variable-link {
+  color: var(--text-accent);
+  text-decoration: underline;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0 2px;
+  border-radius: 2px;
+  font-weight: 500;
+  background-color: transparent;
+  display: inline;
+}
 
-      /* Hover state - light blue background */
-      .markdown-reading-view .player-stat-variable:hover,
-      .markdown-preview-view .player-stat-variable:hover,
-      .markdown-rendered .player-stat-variable:hover,
-      .cm-content .player-stat-variable:hover,
-      a.player-stat-variable:hover,
-      .player-stat-variable:hover {
-        background-color: rgba(0, 102, 204, 0.2) !important;
-        border-bottom-width: 2px !important;
-        padding-bottom: 1px !important;
-        box-shadow: 0 0 6px rgba(0, 102, 204, 0.3) !important;
-        color: #0055aa !important;
-      }
+/* Hover state */
+.player-stat-variable-link:hover {
+  background-color: var(--text-accent-hover);
+  color: var(--text-on-accent);
+}
 
-      /* Active/click state - darker blue background */
-      .markdown-reading-view .player-stat-variable:active,
-      .markdown-preview-view .player-stat-variable:active,
-      .markdown-rendered .player-stat-variable:active,
-      .cm-content .player-stat-variable:active,
-      a.player-stat-variable:active,
-      .player-stat-variable:active {
-        background-color: rgba(0, 102, 204, 0.3) !important;
-        border-bottom-width: 2px !important;
-      }
+/* Live Preview specific styling */
+.cm-line .player-stat-variable-link {
+  font-weight: 500;
+}
 
-      /* Dark mode support */
-      body.theme-dark .markdown-reading-view .player-stat-variable,
-      body.theme-dark .markdown-preview-view .player-stat-variable,
-      body.theme-dark .markdown-rendered .player-stat-variable,
-      body.theme-dark .cm-content .player-stat-variable,
-      body.theme-dark a.player-stat-variable,
-      body.theme-dark .player-stat-variable {
-        color: #5c9cff !important;
-        border-bottom-color: #5c9cff !important;
-      }
+/* Reading mode specific styling */
+.markdown-preview-view .player-stat-variable-link {
+  font-weight: 500;
+}
 
-      body.theme-dark .markdown-reading-view .player-stat-variable:hover,
-      body.theme-dark .markdown-preview-view .player-stat-variable:hover,
-      body.theme-dark .markdown-rendered .player-stat-variable:hover,
-      body.theme-dark .cm-content .player-stat-variable:hover,
-      body.theme-dark a.player-stat-variable:hover,
-      body.theme-dark .player-stat-variable:hover {
-        background-color: rgba(92, 156, 255, 0.2) !important;
-        box-shadow: 0 0 6px rgba(92, 156, 255, 0.3) !important;
-        color: #7eb3ff !important;
-      }
+/* Make sure the styling persists in different themes */
+body.theme-dark .player-stat-variable-link {
+  color: var(--text-accent);
+}
 
-      body.theme-dark .markdown-reading-view .player-stat-variable:active,
-      body.theme-dark .markdown-preview-view .player-stat-variable:active,
-      body.theme-dark .markdown-rendered .player-stat-variable:active,
-      body.theme-dark .cm-content .player-stat-variable:active,
-      body.theme-dark a.player-stat-variable:active,
-      body.theme-dark .player-stat-variable:active {
-        background-color: rgba(92, 156, 255, 0.3) !important;
-      }
-    `;
+body.theme-light .player-stat-variable-link {
+  color: var(--text-accent);
+}
+
+body.theme-dark .player-stat-variable-link:hover {
+  background-color: var(--text-accent-hover);
+  color: var(--text-on-accent);
+}
+
+body.theme-light .player-stat-variable-link:hover {
+  background-color: var(--text-accent-hover);
+  color: var(--text-on-accent);
+}
+`;
     
-    // Direct DOM injection
-    const style = document.createElement("style");
-    style.id = "player-stat-tracker-styles";
-    style.textContent = css;
-    document.head.appendChild(style);
+    // Create and inject the style element
+    const styleEl = document.createElement("style");
+    styleEl.id = "player-stat-tracker-styles";
+    styleEl.textContent = css;
+    document.head.appendChild(styleEl);
     
     console.log("[PlayerStat] CSS styles injected into document");
-    
-    // Verify the styles are in the DOM
-    setTimeout(() => {
-      const injectedStyle = document.getElementById("player-stat-tracker-styles");
-      if (injectedStyle) {
-        console.log("[PlayerStat] ✓ CSS style element found in DOM");
-        const rules = injectedStyle.sheet?.cssRules?.length || 0;
-        console.log(`[PlayerStat] ✓ CSS rules loaded: ${rules}`);
-      } else {
-        console.log("[PlayerStat] ✗ CSS style element NOT found in DOM");
-      }
-    }, 100);
   }
 }
