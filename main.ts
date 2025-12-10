@@ -686,28 +686,6 @@ ${counter.history.map((h) => `- ${new Date(h.timestamp).toLocaleString()}: ${h.v
       }
     }
     
-    // Recent history
-    if (counter.history && counter.history.length > 0) {
-      const historyDiv = popup.createDiv();
-      historyDiv.style.fontSize = "11px";
-      historyDiv.style.color = "var(--text-muted)";
-      historyDiv.style.marginTop = "8px";
-      historyDiv.style.paddingTop = "8px";
-      historyDiv.style.borderTop = "1px solid var(--divider-color)";
-      
-      const historyTitle = historyDiv.createDiv();
-      historyTitle.style.fontWeight = "bold";
-      historyTitle.style.marginBottom = "4px";
-      historyTitle.textContent = "Recent History:";
-      
-      const recentEntries = counter.history.slice(-3).reverse();
-      recentEntries.forEach((entry) => {
-        const entryDiv = historyDiv.createDiv();
-        entryDiv.style.marginLeft = "8px";
-        entryDiv.textContent = `${new Date(entry.timestamp).toLocaleString()}: ${entry.value}`;
-      });
-    }
-    
     // Add to document
     document.body.appendChild(popup);
     
