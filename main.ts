@@ -2,6 +2,7 @@ import { Plugin, WorkspaceLeaf, MarkdownPostProcessor, ItemView } from "obsidian
 import { PlayerStatView, VIEW_TYPE_PLAYER_STAT } from "./view";
 import { PlayerStatSettingTab } from "./settings";
 import { PlayerCounter } from "./counter";
+import { createPlayerStatViewPlugin } from "./cm6-plugin";
 
 export interface PlayerStatSettings {
   displayFormat: "compact" | "full";
@@ -41,6 +42,11 @@ export default class PlayerStatCounterPlugin extends Plugin {
 
     // Add CSS styling for variable links using Obsidian's style injection
     this.addPluginStyles();
+
+    // Register CodeMirror 6 View Plugin for live preview (viewport) rendering
+    console.log("[PlayerStat] Registering CodeMirror 6 View Plugin...");
+    this.registerEditorExtension([createPlayerStatViewPlugin(this)]);
+    console.log("[PlayerStat] ✓ CodeMirror 6 View Plugin registered");
 
     // Add settings tab
     this.addSettingTab(new PlayerStatSettingTab(this.app, this));
@@ -393,8 +399,27 @@ export default class PlayerStatCounterPlugin extends Plugin {
       }
     });
 
+    // Notify all editors to update their viewport (for CodeMirror 6)
+    this.notifyEditorsToUpdate();
+
     // Also scan for any unreplaced variables in the DOM
     this.scanAndReplaceVariables();
+  }
+
+  private notifyEditorsToUpdate() {
+    // Trigger an update to all editor views to re-render decorations
+    const leaves = this.app.workspace.getLeavesOfType("markdown");
+    leaves.forEach((leaf) => {
+      const view = leaf.view;
+      if (view && (view as any).editor) {
+        const editor = (view as any).editor;
+        const editorView = editor.cm;
+        if (editorView) {
+          // Force a full update of the editor viewport
+          editorView.dispatch({});
+        }
+      }
+    });
   }
 
   private replaceVariablesInNode(node: Node) {

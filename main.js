@@ -674,6 +674,81 @@ var PlayerStatSettingTab = class extends import_obsidian2.PluginSettingTab {
   }
 };
 
+// cm6-plugin.ts
+var import_view = __toModule(require("@codemirror/view"));
+var import_state = __toModule(require("@codemirror/state"));
+var VariableWidget = class extends import_view.WidgetType {
+  constructor(value, key) {
+    super();
+    this.value = value;
+    this.key = key;
+  }
+  eq(other) {
+    return other instanceof VariableWidget && other.value === this.value && other.key === this.key;
+  }
+  toDOM() {
+    const link = document.createElement("a");
+    link.className = "player-stat-variable-link internal-link";
+    link.setAttribute("data-counter-key", this.key);
+    link.setAttribute("data-href", this.key);
+    link.setAttribute("href", `#${this.key}`);
+    link.textContent = this.value;
+    link.style.cursor = "pointer";
+    link.style.color = "var(--text-accent)";
+    link.style.textDecoration = "underline";
+    return link;
+  }
+  ignoreEvent() {
+    return false;
+  }
+};
+var PlayerStatViewPlugin = class {
+  constructor(view, plugin) {
+    this.view = view;
+    this.plugin = plugin;
+    this.decorations = this.buildDecorations();
+  }
+  update(update) {
+    if (update.docChanged || update.viewportChanged || update.selectionSet) {
+      this.decorations = this.buildDecorations();
+    }
+  }
+  buildDecorations() {
+    const builder = new import_state.RangeSetBuilder();
+    const doc = this.view.state.doc;
+    console.log("[PlayerStatCM6] Building decorations for viewport");
+    for (let lineNum = 1; lineNum <= doc.lines; lineNum++) {
+      const line = doc.line(lineNum);
+      const lineText = line.text;
+      const variableMatches = lineText.matchAll(/\{\{([\w_]+)\}\}/g);
+      for (const match of variableMatches) {
+        const key = match[1];
+        const counter = this.plugin.counters.find((c) => c.key === key);
+        if (counter !== void 0) {
+          const matchStart = line.from + match.index;
+          const matchEnd = matchStart + match[0].length;
+          console.log(`[PlayerStatCM6] Found variable {{${key}}} at ${matchStart}-${matchEnd}, value: ${counter.value}`);
+          const deco = import_view.Decoration.replace({
+            widget: new VariableWidget(String(counter.value), key),
+            side: -1
+          });
+          builder.add(matchStart, matchEnd, deco);
+        }
+      }
+    }
+    return builder.finish();
+  }
+};
+function createPlayerStatViewPlugin(plugin) {
+  return import_view.ViewPlugin.fromClass(class extends PlayerStatViewPlugin {
+    constructor(view) {
+      super(view, plugin);
+    }
+  }, {
+    decorations: (v) => v.decorations
+  });
+}
+
 // main.ts
 var DEFAULT_SETTINGS = {
   displayFormat: "full",
@@ -701,6 +776,9 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
         this.counters = savedSettings.counters;
       }
       this.addPluginStyles();
+      console.log("[PlayerStat] Registering CodeMirror 6 View Plugin...");
+      this.registerEditorExtension([createPlayerStatViewPlugin(this)]);
+      console.log("[PlayerStat] \u2713 CodeMirror 6 View Plugin registered");
       this.addSettingTab(new PlayerStatSettingTab(this.app, this));
       this.registerView(VIEW_TYPE_PLAYER_STAT, (leaf) => {
         this.view = new PlayerStatView(leaf, this);
@@ -934,7 +1012,21 @@ var PlayerStatCounterPlugin = class extends import_obsidian3.Plugin {
         console.log(`[PlayerStat] Link ${idx}: Counter "${counterKey}" not found. Current text: "${currentText}"`);
       }
     });
+    this.notifyEditorsToUpdate();
     this.scanAndReplaceVariables();
+  }
+  notifyEditorsToUpdate() {
+    const leaves = this.app.workspace.getLeavesOfType("markdown");
+    leaves.forEach((leaf) => {
+      const view = leaf.view;
+      if (view && view.editor) {
+        const editor = view.editor;
+        const editorView = editor.cm;
+        if (editorView) {
+          editorView.dispatch({});
+        }
+      }
+    });
   }
   replaceVariablesInNode(node) {
     const text = node.textContent || "";
